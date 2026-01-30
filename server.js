@@ -284,6 +284,69 @@ bot.onText(/\/unban(?:\s+(.+))?/, async (msg, match) => {
     if(user) { user.isBanned = false; await user.save(); bot.sendMessage(msg.chat.id, makeBorder("ᴜɴʙᴀɴ", `✅: ᴜɴʙᴀɴɴᴇᴅ ${user.firstName}`), {parse_mode:'HTML'}); }
 });
 
+/**
+ * 📊 USER DATA COMMAND (Updated User View)
+ * User View: Profile, ID, Username, Active Links, Status
+ * Owner View: All Database & Tech Details
+ */
+bot.onText(/\/data(?:\s+(.+))?/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const isOwner = OWNER_IDS.includes(msg.from.id);
+    const isGroup = msg.chat.type !== 'private';
+    
+    // Resolve Target User
+    let targetUser;
+    if (msg.reply_to_message) {
+        targetUser = await User.findOne({ chatId: msg.reply_to_message.from.id });
+    } else if (match[1]) {
+        targetUser = await resolveUser(msg, match[1]);
+    } else {
+        targetUser = await User.findOne({ chatId: msg.from.id });
+    }
+
+    if (!targetUser) {
+        return bot.sendMessage(chatId, `<b>❌ ${_fnt("User not found")}</b>`, { parse_mode: 'HTML' });
+    }
+
+    try {
+        const activeLinkCount = await Link.countDocuments({ creatorChatId: targetUser.chatId });
+        const member = await bot.getChatMember(chatId, targetUser.chatId).catch(() => null);
+        const status = (member && (['member', 'creator', 'administrator'].includes(member.status))) ? "🟢 ᴏɴʟɪɴᴇ" : "🔴 ᴏғғʟɪɴᴇ";
+
+        let content = "";
+        
+        if (isOwner) {
+            // 👑 OWNER VIEW: Full Tech Details
+            const regDate = targetUser.joinedAt ? new Date(targetUser.joinedAt).toLocaleDateString() : "ɴ/ᴀ";
+            content += `👤 ɴᴀᴍᴇ: <b>${targetUser.firstName || 'Unknown'}</b>\n`;
+            content += `🆔 ᴜsᴇʀ ɪᴅ: <code>${targetUser.chatId}</code>\n`;
+            content += `🏷 ᴜsᴇʀ: @${targetUser.username || 'ɴ/ᴀ'}\n`;
+            content += `💰 ᴄᴏɪɴs: <code>${targetUser.coins}</code>\n`;
+            content += `🎁 ғʀᴇᴇ: <code>${targetUser.freeUrlsLeft}</code>\n`;
+            content += `🔗 ᴀᴄᴛɪᴠᴇ: <code>${activeLinkCount}</code>\n`;
+            content += `📡 sᴛᴀᴛᴜs: <b>${status}</b>\n`;
+            content += `🛡 ʙᴀɴ: <b>${targetUser.isBanned ? "ʏᴇs" : "ɴᴏ"}</b>\n`;
+            content += `📅 ʀᴇɢ ᴅᴀᴛᴇ: <code>${regDate}</code>`;
+        } else {
+            // 👤 USER VIEW: Profile + ID + Active Links
+            content += `👤 ɴᴀᴍᴇ: <b>${targetUser.firstName || 'Unknown'}</b>\n`;
+            content += `🆔 ᴜsᴇʀ ɪᴅ: <code>${targetUser.chatId}</code>\n`; // Added ID for User
+            content += `🏷 ᴜsᴇʀ: @${targetUser.username || 'ɴ/ᴀ'}\n`;
+            content += `📡 sᴛᴀᴛᴜs: <b>${status}</b>`;
+        }
+
+        // Custom Short Border Design
+        const shortBorder = (title, body) => {
+            return `<b>┏─「 ${_fnt(title)} 」</b>\n${body.split('\n').map(l => `<b>┃</b> ${l}`).join('\n')}\n<b>┗───────────╼</b>`;
+        };
+
+        bot.sendMessage(chatId, shortBorder(isOwner ? "ᴀᴅᴍɪɴ ᴅᴀᴛᴀ ᴠɪᴇᴡ" : "ᴜsᴇʀ ᴘʀᴏғɪʟᴇ", content), { parse_mode: 'HTML' });
+
+    } catch (e) {
+        bot.sendMessage(chatId, "❌ ᴇʀʀᴏʀ ᴘʀᴇᴘᴀʀɪɴɢ ᴅᴀᴛᴀ");
+    }
+});
+
 bot.onText(/\/users/, async (msg) => {
     if (!OWNER_IDS.includes(msg.from.id)) return;
 
