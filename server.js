@@ -17,7 +17,7 @@ const CHANNEL_ID1 = "@alphacodex369";
 const CHANNEL_ID2 = "@Termuxcodex";
 const GROUP_ID = "@Codex_teamx"; 
 const MONGO_URI = "mongodb+srv://darkgangdarks_db_user:aEEYR59YEVameS1y@cluster0.iyakwh0.mongodb.net/DEVICEX?retryWrites=true&w=majority";
-
+const fs = require('fs');
 const bot = new TelegramBot(TOKEN, { polling: true });
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -284,10 +284,56 @@ bot.onText(/\/unban(?:\s+(.+))?/, async (msg, match) => {
     if(user) { user.isBanned = false; await user.save(); bot.sendMessage(msg.chat.id, makeBorder("ᴜɴʙᴀɴ", `✅: ᴜɴʙᴀɴɴᴇᴅ ${user.firstName}`), {parse_mode:'HTML'}); }
 });
 
+
 bot.onText(/\/users/, async (msg) => {
     if (!OWNER_IDS.includes(msg.from.id)) return;
-    const count = await User.countDocuments();
-    bot.sendMessage(msg.chat.id, makeBorder("sᴛᴀᴛs", `👥: ᴛᴏᴛᴀʟ ᴜsᴇʀs: ${count}`), {parse_mode:'HTML'});
+
+    try {
+        const users = await User.find({});
+        const totalUsers = users.length;
+        const activeLinks = await Link.countDocuments();
+        const bannedUsers = await User.countDocuments({ isBanned: true });
+
+        // 1. Send Quick Stats
+        let report = `📊 <b>sʏsᴛᴇᴍ sᴛᴀᴛɪsᴛɪᴄs</b>\n\n`;
+        report += `👥 <b>ᴛᴏᴛᴀʟ ᴜsᴇʀs:</b> <code>${totalUsers}</code>\n`;
+        report += `🔗 <b>ᴀᴄᴛɪᴠᴇ ʟɪɴᴋs:</b> <code>${activeLinks}</code>\n`;
+        report += `🚫 <b>ʙᴀɴɴᴇᴅ ᴜsᴇʀs:</b> <code>${bannedUsers}</code>\n`;
+        
+        await bot.sendMessage(msg.chat.id, makeBorder("sᴛᴀᴛs", report), { parse_mode: 'HTML' });
+
+        // 2. Create Detailed TXT File
+        let fileContent = `DX-CODEX USER DATABASE REPORT\n`;
+        fileContent += `Generated on: ${new Date().toLocaleString()}\n`;
+        fileContent += `--------------------------------------------------\n\n`;
+
+        users.forEach((u, index) => {
+            const status = u.isBanned ? "BANNED 🚫" : "VALID ✅";
+            const date = u.joinedAt ? new Date(u.joinedAt).toLocaleDateString() : "N/A";
+            fileContent += `${index + 1}. ID: ${u.chatId}\n`;
+            fileContent += `   NAME: ${u.firstName || 'N/A'}\n`;
+            fileContent += `   USER: @${u.username || 'N/A'}\n`;
+            fileContent += `   DATE: ${date}\n`;
+            fileContent += `   STATUS: ${status}\n`;
+            fileContent += `--------------------------------------------------\n`;
+        });
+
+        const filePath = `./all_users.txt`;
+        fs.writeFileSync(filePath, fileContent);
+
+        // 3. Send the File
+        await bot.sendDocument(msg.chat.id, filePath, {
+            caption: `📄 <b>ᴀʟʟ ᴜsᴇʀ ᴅᴇᴛᴀɪʟs ʟɪsᴛ</b>`,
+            parse_mode: 'HTML'
+        });
+
+        // 4. Delete file from server after sending
+        fs.unlinkSync(filePath);
+
+    } catch (e) {
+        console.error(e);
+        bot.sendMessage(msg.chat.id, "❌ Error generating user report.");
+    }
 });
 
 // ─── 📢 BROADCAST (Fixed + Buttons + Media) ───────────────
