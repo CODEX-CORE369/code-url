@@ -114,7 +114,31 @@ bot.onText(/\/start/, async (msg) => {
 
 function showMainMenu(msg) {
     const mention = `<a href="tg://user?id=${msg.from.id}">${msg.from.first_name}</a>`;
-    const content = `👤: ${mention}\n🆔: <code>${msg.from.id}</code>\n💬: sᴇʟᴇᴄᴛ ᴀɴ ᴏᴘᴛɪᴏɴ ʙᴇʟᴏᴡ\n👇: ᴜsᴇ ʙᴜᴛᴛᴏɴs ᴛᴏ ᴄᴏɴᴛʀᴏʟ`;
+
+const content = `<b>┏─「 ᴜsᴇʀ ᴘʀᴏғɪʟᴇ 」</b>
+<b>┃</b> 👤 <b>ɴᴀᴍᴇ:</b> ${mention}
+<b>┃</b> 🆔 <b>ɪᴅ:</b> <code>${msg.from.id}</code>
+<b>┗───────────╼</b>
+
+<b>┏─「 ʙᴏᴛ ғᴇᴀᴛᴜʀᴇs 」</b>
+<b>┃</b> ✅ <b>ᴄᴜsᴛᴏᴍ ᴜʀʟ ɢᴇɴᴇʀᴀᴛɪᴏɴ</b>
+<b>┃</b> ✅ <b>ɪɴsᴛᴀɴᴛ ᴅᴀᴛᴀ ɴᴏᴛɪғɪᴄᴀᴛɪᴏɴ</b>
+<b>┃</b> ✅ <b>24/ʜ sᴇʀᴠᴇʀ ᴜᴘᴛɪᴍᴇ</b>
+<b>┃</b> ✅ <b>sᴇᴄᴜʀᴇ ᴅᴀᴛᴀʙᴀsᴇ</b>
+<b>┗───────────╼</b>
+
+<b>┏─「 ʜᴏᴡ ᴛᴏ ᴏᴘᴇʀᴀᴛᴇ 」</b>
+<b>┃</b> 1️⃣ <b>ᴄʟɪᴄᴋ 'ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ'</b>
+<b>┃</b> 2️⃣ <b>ᴇɴᴛᴇʀ ᴀ sʜᴏʀᴛ ɴᴀᴍᴇ ғᴏʀ ʟɪɴᴋ</b>
+<b>┃</b> 3️⃣ <b>sᴇᴛ ᴀ ᴄᴜsᴛᴏᴍ ʀᴇᴅɪʀᴇᴄᴛ ᴜʀʟ</b>
+<b>┃</b> 4️⃣ <b>sʜᴀʀᴇ ʟɪɴᴋ & ɢᴇᴛ ɪɴsᴛᴀɴᴛ ᴅᴀᴛᴀ</b>
+<b>┗───────────╼</b>
+
+<b>┏─「 sʏsᴛᴇᴍ ɪɴғᴏ 」</b>
+<b>┃</b> 👨‍💻 <b>ᴅᴇᴠᴇʟᴏᴘᴇʀ: DX-CODEX</b>
+<b>┃</b> 💬 <b>sᴇʟᴇᴄᴛ ᴀɴ ᴏᴘᴛɪᴏɴ ʙᴇʟᴏᴡ</b>
+<b>┃</b> 👇 <b>ᴜsᴇ ʙᴜᴛᴛᴏɴs ᴛᴏ ᴄᴏɴᴛʀᴏʟ</b>
+<b>┗───────────╼</b>`;
     bot.sendMessage(msg.chat.id, makeBorder("ᴅᴀsʜʙᴏᴀʀᴅ", content), {
         parse_mode: 'HTML',
         reply_markup: { keyboard: [[{ text: "🔗 ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ" }], [{ text: "👤 ᴍʏ ɪɴғᴏ" }, { text: "👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ" }]], resize_keyboard: true }
