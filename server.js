@@ -240,7 +240,7 @@ async function createFinalLink(msg, name, redirectUrl) {
     await new Link({ shortId: name, creatorChatId: chatId, originalUrl: redirectUrl }).save();
     delete userState[chatId];
     
-    const url = `https://${process.env.RENDER_EXTERNAL_HOSTNAME || 'YOUR_APP.onrender.com'}/w/${name}`;
+    const url = `https://${process.env.RENDER_EXTERNAL_HOSTNAME || 'https://code-url-hgsr.onrender.com'}/w/${name}`;
     bot.sendMessage(chatId, makeBorder("✅ sᴜᴄᴄᴇss", `🔗: ${url}\n\n🔄: ${redirectUrl || 'N/A'}\n💰: ʀᴇᴍᴀɪɴɪɴɢ: ${user.coins}`), { parse_mode: 'HTML' });
 }
 
