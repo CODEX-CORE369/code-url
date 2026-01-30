@@ -278,12 +278,231 @@ bot.onText(/\/ban(?:\s+(.+))?/, async (msg, match) => {
     if(user) { user.isBanned = true; await user.save(); bot.sendMessage(msg.chat.id, makeBorder("ʙᴀɴ", `🚫: ʙᴀɴɴᴇᴅ ${user.firstName}`), {parse_mode:'HTML'}); }
 });
 
+/**
+ * 🛠 ADMIN MENU COMMAND (Private DM Only)
+ * Function: Shows all admin commands and usage guide
+ * Author: NIKO (DX-CODEX)
+ */
+bot.onText(/\/menu/, async (msg) => {
+    const chatId = msg.chat.id;
+    const fromId = msg.from.id;
+
+    // Check if user is Owner and in Private DM
+    if (!OWNER_IDS.includes(fromId)) return;
+    if (msg.chat.type !== 'private') {
+        return bot.sendMessage(chatId, "❌ <b>ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ ᴏɴʟʏ ᴡᴏʀᴋs ɪɴ ʙᴏᴛ ᴅᴍ!</b>", { parse_mode: 'HTML' });
+    }
+
+    let menu = `👋 ʜᴇʟʟᴏ ᴀᴅᴍɪɴ, ɪ ᴀᴍ <b>${_fnt("CODE-URL")}</b>\n`;
+    menu += `ʜᴇʀᴇ ᴀʀᴇ ʏᴏᴜʀ ᴘᴏᴡᴇʀғᴜʟ ᴄᴏᴍᴍᴀɴᴅs:\n\n`;
+
+    // 👤 User Management
+    menu += `👤 <b>ᴜsᴇʀ ᴍᴀɴᴀɢᴇᴍᴇɴᴛ</b>\n`;
+    menu += `├ <code>/data</code> - sʜᴏᴡ ʏᴏᴜʀ ᴘʀᴏғɪʟᴇ\n`;
+    menu += `├ <code>/data</code> [ʀᴇᴘʟʏ/ɪᴅ] - ғᴜʟʟ ᴅʙ ɪɴғᴏ\n`;
+    menu += `└ <code>/users</code> - ɢᴇᴛ ᴜsᴇʀ ʟɪsᴛ (.ᴛxᴛ)\n\n`;
+
+    // 🔗 Link Management
+    menu += `🔗 <b>ʟɪɴᴋ ᴍᴀɴᴀɢᴇᴍᴇɴᴛ</b>\n`;
+    menu += `├ <code>/ulist</code> - ᴀʟʟ ᴀᴄᴛɪᴠᴇ ʟɪɴᴋ ᴜsᴇʀs\n`;
+    menu += `├ <code>/ulink</code> [ɪᴅ/ʀᴇᴘʟʏ] - ᴜsᴇʀ ʟɪɴᴋ ʟɪsᴛ\n`;
+    menu += `└ <code>/rmlink</code> [ɪᴅ] [ɴᴜᴍ/ᴀʟʟ] - ᴅᴇʟᴇᴛᴇ\n\n`;
+
+    // 💰 Economy & Control
+    menu += `💰 <b>ᴄᴏɴᴛʀᴏʟ sʏsᴛᴇᴍ</b>\n`;
+    menu += `├ <code>/add</code> [ǫᴛʏ] [ɪᴅ/ʀᴇᴘʟʏ] - ᴀᴅᴅ ᴄᴏɪɴs\n`;
+    menu += `├ <code>/ban</code> [ɪᴅ/ʀᴇᴘʟʏ] - ʀᴇsᴛʀɪᴄᴛ ᴜsᴇʀ\n`;
+    menu += `└ <code>/unban</code> [ɪᴅ/ʀᴇᴘʟʏ] - ʟɪғᴛ ʙᴀɴ\n\n`;
+
+    menu += `📝 <b>ᴜsᴀɢᴇ ᴛɪᴘ:</b>\n`;
+    menu += `<i>ʏᴏᴜ ᴄᴀɴ ʀᴇᴘʟʏ ᴛᴏ ᴀɴʏ ᴜsᴇʀ ᴍᴇssᴀɢᴇ ᴡɪᴛʜ ᴛʜᴇsᴇ ᴄᴏᴍᴍᴀɴᴅs ɪɴ ɢʀᴏᴜᴘs ᴛᴏ ᴛᴀʀɢᴇᴛ ᴛʜᴇᴍ ɪɴsᴛᴀɴᴛʟʏ.</i>`;
+
+    const menuBorder = (title, body) => {
+        return `<b>┏─「 ${_fnt(title)} 」</b>\n${body.split('\n').map(l => `<b>┃</b> ${l}`).join('\n')}\n<b>┗───────────╼</b>`;
+    };
+
+    bot.sendMessage(chatId, menuBorder("ᴀᴅᴍɪɴ ᴘᴀɴᴇʟ", menu), { 
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: "📢 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ", url: "https://t.me/Codex_teamx" }]
+            ]
+        }
+    });
+});
+
 bot.onText(/\/unban(?:\s+(.+))?/, async (msg, match) => {
     if (!OWNER_IDS.includes(msg.from.id)) return;
     const user = await resolveUser(msg, match[1]);
     if(user) { user.isBanned = false; await user.save(); bot.sendMessage(msg.chat.id, makeBorder("ᴜɴʙᴀɴ", `✅: ᴜɴʙᴀɴɴᴇᴅ ${user.firstName}`), {parse_mode:'HTML'}); }
 });
 
+/**
+ * 🛠 ADMIN ADVANCED LINK MANAGEMENT (Group & DM Supported)
+ * Commands: /ulist, /ulink <id/reply>, /rmlink
+ */
+
+// 1. /ulist - গ্রুপের বা ডিএম-এর যেকোনো ওনার দেখতে পারবে
+bot.onText(/\/ulist/, async (msg) => {
+    if (!OWNER_IDS.includes(msg.from.id)) return;
+
+    try {
+        const links = await Link.find({});
+        if (links.length === 0) return bot.sendMessage(msg.chat.id, "<b>📭 ɴᴏ ᴀᴄᴛɪᴠᴇ ʟɪɴᴋs ɪɴ sᴇʀᴠᴇʀ</b>", {parse_mode:'HTML'});
+
+        const userGroups = {};
+        links.forEach(l => {
+            if (!userGroups[l.creatorChatId]) userGroups[l.creatorChatId] = 0;
+            userGroups[l.creatorChatId]++;
+        });
+
+        let report = `📂 <b>ᴀᴄᴛɪᴠᴇ ʟɪɴᴋs sᴜᴍᴍᴀʀʏ</b>\n\n`;
+        for (const uid in userGroups) {
+            const user = await User.findOne({ chatId: uid });
+            report += `👤 <b>${user ? user.firstName : 'Unknown'}</b>\n`;
+            report += `🆔 ɪᴅ: <code>${uid}</code>\n`;
+            report += `🔗 ʟɪɴᴋs: <b>${userGroups[uid]}</b>\n`;
+            report += `────────────────────\n`;
+        }
+
+        bot.sendMessage(msg.chat.id, makeBorder("ʟɪɴᴋ ᴍᴀɴᴀɢᴇʀ", report), {
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: [[{ text: "📝 ʜᴏᴡ ᴛᴏ ʀᴇᴍᴏᴠᴇ", callback_data: "rm_guide" }]] }
+        });
+    } catch (e) { bot.sendMessage(msg.chat.id, "❌ Error."); }
+});
+
+// 2. /ulink - আইডি দিয়ে বা মেসেজে রিপ্লাই দিয়ে কাজ করবে
+bot.onText(/\/ulink(?:\s+(\d+))?/, async (msg, match) => {
+    if (!OWNER_IDS.includes(msg.from.id)) return;
+
+    let targetId;
+    if (msg.reply_to_message) {
+        targetId = msg.reply_to_message.from.id;
+    } else if (match[1]) {
+        targetId = parseInt(match[1]);
+    } else {
+        return bot.sendMessage(msg.chat.id, "❌ Please provide a User ID or reply to their message.");
+    }
+
+    const userLinks = await Link.find({ creatorChatId: targetId });
+    if (userLinks.length === 0) return bot.sendMessage(msg.chat.id, `❌ No active links for <code>${targetId}</code>`, {parse_mode:'HTML'});
+
+    let linkMsg = `👤 <b>ᴜsᴇʀ:</b> <code>${targetId}</code>\n`;
+    linkMsg += `📊 <b>ᴀᴄᴛɪᴠᴇ:</b> ${userLinks.length}\n\n`;
+
+    userLinks.forEach((l, i) => {
+        linkMsg += `<b>${i + 1}.</b> <code>${l.shortId}</code> | ${l.customName || 'No Name'}\n`;
+    });
+
+    bot.sendMessage(msg.chat.id, makeBorder("ᴜsᴇʀ ʟɪɴᴋ ʟɪsᴛ", linkMsg), {
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: "🗑️ ᴅᴇʟᴇᴛᴇ sᴘᴇᴄɪғɪᴄ", callback_data: `prompt_del_${targetId}` }],
+                [{ text: "🔥 ᴅᴇʟᴇᴛᴇ ᴀʟʟ", callback_data: `delall_${targetId}` }]
+            ]
+        }
+    });
+});
+
+// 3. Callback Handlers (Buttons)
+bot.on('callback_query', async (query) => {
+    if (!OWNER_IDS.includes(query.from.id)) return bot.answerCallbackQuery(query.id, { text: "🚫 Access Denied" });
+
+    const [action, type, uid] = query.data.split('_');
+
+    if (query.data === "rm_guide") {
+        bot.sendMessage(query.message.chat.id, "📌 <b>ʀᴇᴍᴏᴠᴀʟ ɢᴜɪᴅᴇ:</b>\n\nTo delete specific links:\n<code>/rmlink [ID] 1 3</code>\n\nTo delete everything:\n<code>/rmlink [ID] all</code>", {parse_mode:'HTML'});
+    }
+
+    if (action === "delall") {
+        const target = query.data.split('_')[1];
+        await Link.deleteMany({ creatorChatId: target });
+        bot.editMessageText(`✅ All links for <code>${target}</code> removed.`, { chat_id: query.message.chat.id, message_id: query.message.message_id, parse_mode: 'HTML' });
+    }
+    
+    if (query.data.startsWith("prompt_del_")) {
+        bot.sendMessage(query.message.chat.id, `👉 Copy & Edit:\n<code>/rmlink ${uid} 1</code>`, {parse_mode:'HTML'});
+    }
+});
+
+// 4. /rmlink - একচুয়াল ডিলিট কমান্ড
+bot.onText(/\/rmlink\s+(\d+)\s+(.+)/, async (msg, match) => {
+    if (!OWNER_IDS.includes(msg.from.id)) return;
+    const targetId = parseInt(match[1]);
+    const input = match[2].trim().toLowerCase();
+
+    if (input === "all") {
+        const res = await Link.deleteMany({ creatorChatId: targetId });
+        bot.sendMessage(msg.chat.id, `✅ Success! ${res.deletedCount} links removed.`);
+    } else {
+        const userLinks = await Link.find({ creatorChatId: targetId });
+        const nums = input.split(/\s+/).map(n => parseInt(n) - 1);
+        
+        let count = 0;
+        for (let i of nums) {
+            if (userLinks[i]) {
+                await Link.deleteOne({ _id: userLinks[i]._id });
+                count++;
+            }
+        }
+        bot.sendMessage(msg.chat.id, `✅ Removed ${count} specific link(s).`);
+    }
+});
+
+/**
+ * 🛠 ADMIN MENU COMMAND (Private DM Only)
+ * Function: Shows all admin commands and usage guide
+ * Author: NIKO (DX-CODEX)
+ */
+bot.onText(/\/menu/, async (msg) => {
+    const chatId = msg.chat.id;
+    const fromId = msg.from.id;
+
+    // Check if user is Owner and in Private DM
+    if (!OWNER_IDS.includes(fromId)) return;
+    if (msg.chat.type !== 'private') {
+        return bot.sendMessage(chatId, "❌ <b>ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ ᴏɴʟʏ ᴡᴏʀᴋs ɪɴ ʙᴏᴛ ᴅᴍ!</b>", { parse_mode: 'HTML' });
+    }
+
+    let menu = `👋 ʜᴇʟʟᴏ ᴀᴅᴍɪɴ, ɪ ᴀᴍ <b>${_fnt("NIKO")}</b>\n`;
+    menu += `ʜᴇʀᴇ ᴀʀᴇ ʏᴏᴜʀ ᴘᴏᴡᴇʀғᴜʟ ᴄᴏᴍᴍᴀɴᴅs:\n\n`;
+
+    // 👤 User Management
+    menu += `👤 <b>ᴜsᴇʀ ᴍᴀɴᴀɢᴇᴍᴇɴᴛ</b>\n`;
+    menu += `├ <code>/data</code> - sʜᴏᴡ ʏᴏᴜʀ ᴘʀᴏғɪʟᴇ\n`;
+    menu += `├ <code>/data</code> [ʀᴇᴘʟʏ/ɪᴅ] - ғᴜʟʟ ᴅʙ ɪɴғᴏ\n`;
+    menu += `└ <code>/users</code> - ɢᴇᴛ ᴜsᴇʀ ʟɪsᴛ (.ᴛxᴛ)\n\n`;
+
+    // 🔗 Link Management
+    menu += `🔗 <b>ʟɪɴᴋ ᴍᴀɴᴀɢᴇᴍᴇɴᴛ</b>\n`;
+    menu += `├ <code>/ulist</code> - ᴀʟʟ ᴀᴄᴛɪᴠᴇ ʟɪɴᴋ ᴜsᴇʀs\n`;
+    menu += `├ <code>/ulink</code> [ɪᴅ/ʀᴇᴘʟʏ] - ᴜsᴇʀ ʟɪɴᴋ ʟɪsᴛ\n`;
+    menu += `└ <code>/rmlink</code> [ɪᴅ] [ɴᴜᴍ/ᴀʟʟ] - ᴅᴇʟᴇᴛᴇ\n\n`;
+
+    // 💰 Economy & Control
+    menu += `💰 <b>ᴄᴏɴᴛʀᴏʟ sʏsᴛᴇᴍ</b>\n`;
+    menu += `├ <code>/add</code> [ǫᴛʏ] [ɪᴅ/ʀᴇᴘʟʏ] - ᴀᴅᴅ ᴄᴏɪɴs\n`;
+    menu += `├ <code>/ban</code> [ɪᴅ/ʀᴇᴘʟʏ] - ʀᴇsᴛʀɪᴄᴛ ᴜsᴇʀ\n`;
+    menu += `└ <code>/unban</code> [ɪᴅ/ʀᴇᴘʟʏ] - ʟɪғᴛ ʙᴀɴ\n\n`;
+
+    menu += `📝 <b>ᴜsᴀɢᴇ ᴛɪᴘ:</b>\n`;
+    menu += `<i>ʏᴏᴜ ᴄᴀɴ ʀᴇᴘʟʏ ᴛᴏ ᴀɴʏ ᴜsᴇʀ ᴍᴇssᴀɢᴇ ᴡɪᴛʜ ᴛʜᴇsᴇ ᴄᴏᴍᴍᴀɴᴅs ɪɴ ɢʀᴏᴜᴘs ᴛᴏ ᴛᴀʀɢᴇᴛ ᴛʜᴇᴍ ɪɴsᴛᴀɴᴛʟʏ.</i>`;
+
+    const menuBorder = (title, body) => {
+        return `<b>┏─「 ${_fnt(title)} 」</b>\n${body.split('\n').map(l => `<b>┃</b> ${l}`).join('\n')}\n<b>┗───────────╼</b>`;
+    };
+
+    bot.sendMessage(chatId, menuBorder("ᴀᴅᴍɪɴ ᴘᴀɴᴇʟ", menu), { 
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: "📢 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ", url: "https://t.me/Codex_teamx" }]
+            ]
+        }
+    });
+});
 /**
  * 📊 USER DATA COMMAND (Updated User View)
  * User View: Profile, ID, Username, Active Links, Status
