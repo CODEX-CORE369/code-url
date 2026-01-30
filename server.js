@@ -284,7 +284,6 @@ bot.onText(/\/unban(?:\s+(.+))?/, async (msg, match) => {
     if(user) { user.isBanned = false; await user.save(); bot.sendMessage(msg.chat.id, makeBorder("ᴜɴʙᴀɴ", `✅: ᴜɴʙᴀɴɴᴇᴅ ${user.firstName}`), {parse_mode:'HTML'}); }
 });
 
-
 bot.onText(/\/users/, async (msg) => {
     if (!OWNER_IDS.includes(msg.from.id)) return;
 
@@ -294,7 +293,7 @@ bot.onText(/\/users/, async (msg) => {
         const activeLinks = await Link.countDocuments();
         const bannedUsers = await User.countDocuments({ isBanned: true });
 
-        // 1. Send Quick Stats
+        // 1. Send Quick Stats Report
         let report = `📊 <b>sʏsᴛᴇᴍ sᴛᴀᴛɪsᴛɪᴄs</b>\n\n`;
         report += `👥 <b>ᴛᴏᴛᴀʟ ᴜsᴇʀs:</b> <code>${totalUsers}</code>\n`;
         report += `🔗 <b>ᴀᴄᴛɪᴠᴇ ʟɪɴᴋs:</b> <code>${activeLinks}</code>\n`;
@@ -302,7 +301,7 @@ bot.onText(/\/users/, async (msg) => {
         
         await bot.sendMessage(msg.chat.id, makeBorder("sᴛᴀᴛs", report), { parse_mode: 'HTML' });
 
-        // 2. Create Detailed TXT File
+        // 2. Create Detailed TXT File with Coins & Free URLs
         let fileContent = `DX-CODEX USER DATABASE REPORT\n`;
         fileContent += `Generated on: ${new Date().toLocaleString()}\n`;
         fileContent += `--------------------------------------------------\n\n`;
@@ -310,24 +309,27 @@ bot.onText(/\/users/, async (msg) => {
         users.forEach((u, index) => {
             const status = u.isBanned ? "BANNED 🚫" : "VALID ✅";
             const date = u.joinedAt ? new Date(u.joinedAt).toLocaleDateString() : "N/A";
+            
             fileContent += `${index + 1}. ID: ${u.chatId}\n`;
             fileContent += `   NAME: ${u.firstName || 'N/A'}\n`;
-            fileContent += `   USER: @${u.username || 'N/A'}\n`;
+            fileContent += `   USER: @${u.username || 'N/S'}\n`;
+            fileContent += `   COINS: ${u.coins || 0}\n`;        // Added Coins
+            fileContent += `   FREE LEFT: ${u.freeUrlsLeft || 0}\n`; // Added Free URLs
             fileContent += `   DATE: ${date}\n`;
             fileContent += `   STATUS: ${status}\n`;
             fileContent += `--------------------------------------------------\n`;
         });
 
-        const filePath = `./all_users.txt`;
+        const filePath = `./all_users_report.txt`;
         fs.writeFileSync(filePath, fileContent);
 
-        // 3. Send the File
+        // 3. Send the Document
         await bot.sendDocument(msg.chat.id, filePath, {
-            caption: `📄 <b>ᴀʟʟ ᴜsᴇʀ ᴅᴇᴛᴀɪʟs ʟɪsᴛ</b>`,
+            caption: `📄 <b>ᴀʟʟ ᴜsᴇʀ ᴅᴇᴛᴀɪʟs (ɪɴᴄʟᴜᴅɪɴɢ ᴄᴏɪɴs/ғʀᴇᴇ)</b>`,
             parse_mode: 'HTML'
         });
 
-        // 4. Delete file from server after sending
+        // 4. Cleanup
         fs.unlinkSync(filePath);
 
     } catch (e) {
