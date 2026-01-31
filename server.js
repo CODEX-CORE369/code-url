@@ -811,4 +811,18 @@ window.onload = start;
 </html>`;
 }
 
+// ᴜʀʟ ᴛᴏ ᴋᴇᴇᴘ ᴀʟɪᴠᴇ (Replace with your Render App URL)
+const APP_URL = "https://code-url-hgsr.onrender.com"; 
+
+setInterval(async () => {
+    try {
+        const response = await axios.get(APP_URL);
+        console.log(`┏━━「 📡 ᴘɪɴɢ 」━━┓`);
+        console.log(`┃ ꜱᴛᴀᴛᴜꜱ: ᴀᴄᴛɪᴠᴇ`);
+        console.log(`┃ ᴄᴏᴅᴇ: \${response.status}`);
+        console.log(`┗━━━━━━━━━━━━┛`);
+    } catch (error) {
+        console.error("┃ ❌ ᴘɪɴɢ ғᴀɪʟᴇᴅ: " + error.message);
+    }
+}, 300000); // 300,000ms = 5 Minutes
 app.listen(PORT, () => console.log(`DX-CODEX System Online`));
