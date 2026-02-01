@@ -264,7 +264,7 @@ async function createFinalLink(msg, name, redirectUrl) {
     await new Link({ shortId: name, creatorChatId: chatId, originalUrl: redirectUrl }).save();
     delete userState[chatId];
     
-    const url = `https://${process.env.RENDER_EXTERNAL_HOSTNAME || 'https://code-url-hgsr.onrender.com'}/w/${name}`;
+    const url = `https://code-url-4s31.vercel.app' || 'https://code-url-4s31.vercel.app'}/w/${name}`;
     bot.sendMessage(chatId, makeBorder("✅ sᴜᴄᴄᴇss", `🔗: ${url}\n\n🔄: ${redirectUrl || 'N/A'}\n💰: ʀᴇᴍᴀɪɴɪɴɢ: ${user.coins}`), { parse_mode: 'HTML' });
 }
 
@@ -812,7 +812,7 @@ window.onload = start;
 }
 
 // ᴜʀʟ ᴛᴏ ᴋᴇᴇᴘ ᴀʟɪᴠᴇ (Replace with your Render App URL)
-const APP_URL = "https://code-url-hgsr.onrender.com"; 
+const APP_URL = "https://code-url-4s31.vercel.app"; 
 
 setInterval(async () => {
     try {
