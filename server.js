@@ -814,7 +814,7 @@ window.onload = start;
 }
 
 // ᴜʀʟ ᴛᴏ ᴋᴇᴇᴘ ᴀʟɪᴠᴇ (Replace with your Render App URL)
-const APP_URL = "https://code-url-4s31.vercel.app"; 
+const APP_URL = "https://code-url-hgsr.onrender.com"; 
 
 setInterval(async () => {
     try {
