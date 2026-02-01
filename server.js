@@ -12,7 +12,7 @@ const axios = require('axios');
 
 // 🛠 CONFIGURATION
 const TOKEN = "8291862788:AAEvXOm7TSrCIjb1TxPm7rleiG_NooTgxdE";
-const OWNER_IDS = [6703335929, 6041728084, 5136260272, 7089533955]; 
+const OWNER_IDS = [6703335929, 6041728084, 5136260272, 7089533955, 6125809347]; 
 const CHANNEL_ID1 = "@alphacodex369";
 const CHANNEL_ID2 = "@Termuxcodex";
 const GROUP_ID = "@Codex_teamx"; 
