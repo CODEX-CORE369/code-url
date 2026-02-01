@@ -264,9 +264,11 @@ async function createFinalLink(msg, name, redirectUrl) {
     await new Link({ shortId: name, creatorChatId: chatId, originalUrl: redirectUrl }).save();
     delete userState[chatId];
     
-    const url = 'https://code-url-kappa.vercel.app/w/${name}`;
+    // 👇 ফিক্স করা লাইন: এখানে দুই পাশেই Backtick (`) ব্যবহার করা হয়েছে
+    const url = `https://code-url-hgsr.onrender.com/w/${name}`;
+    
     bot.sendMessage(chatId, makeBorder("✅ sᴜᴄᴄᴇss", `🔗: ${url}\n\n🔄: ${redirectUrl || 'N/A'}\n💰: ʀᴇᴍᴀɪɴɪɴɢ: ${user.coins}`), { parse_mode: 'HTML' });
-}
+        }
 
 // ─── 👑 ADMIN COMMANDS (Merged Logic + Styling) ───────────
 
