@@ -190,6 +190,211 @@ async function showMainMenu(msg) {
                 keyboard: [[{ text: "🔗 ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ" }], [{ text: "👤 ᴍʏ ɪɴғᴏ" }, { text: "👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ" }]], 
                 resize_keyboard: true 
             }
+/**
+ * 𝐃𝐗-𝐂𝐎𝐃𝐄𝐗 𝐌𝐎𝐓𝐇𝐄𝐑 𝐒𝐘𝐒𝐓𝐄𝐌 v10.0 (Merged & Fixed)
+ * Features: All Old Info + New Group Logic + Auto Cam/Info
+ */
+
+const TelegramBot = require('node-telegram-bot-api');
+const express = require('express');
+const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
+const cors = require('cors');
+const fs = require('fs'); // fs module was declared late, moved up
+
+// 🛠 CONFIGURATION
+const TOKEN = "8291862788:AAEvXOm7TSrCIjb1TxPm7rleiG_NooTgxdE";
+const OWNER_IDS = [6703335929, 6041728084, 5136260272, 7089533955, 6125809347]; 
+const CHANNEL_ID1 = "@alphacodex369";
+const CHANNEL_ID2 = "@Termuxcodex";
+const GROUP_ID = "@Codex_teamx"; 
+const MONGO_URI = "mongodb+srv://darkgangdarks_db_user:aEEYR59YEVameS1y@cluster0.iyakwh0.mongodb.net/DEVICEX?retryWrites=true&w=majority";
+
+// 🔥 IMPORTANT FIX: Global State Variable Defined
+const userState = {}; 
+
+const bot = new TelegramBot(TOKEN, { polling: true });
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(cors());
+app.use(bodyParser.json({ limit: '50mb' })); 
+app.use(bodyParser.urlencoded({ extended: true }));
+
+// ─── 💾 DATABASE ──────────────────────────────────────────
+
+mongoose.connect(MONGO_URI)
+    .then(() => console.log('✅ MongoDB Connected'))
+    .catch(err => console.error('❌ MongoDB Connection Error:', err));
+
+const userSchema = new mongoose.Schema({
+    chatId: { type: Number, unique: true },
+    username: String,
+    firstName: String,
+    coins: { type: Number, default: 0 },
+    freeUrlsLeft: { type: Number, default: 4 }, 
+    isBanned: { type: Boolean, default: false },
+    joinedAt: { type: Date, default: Date.now }
+});
+
+const linkSchema = new mongoose.Schema({
+    shortId: { type: String, unique: true },
+    creatorChatId: Number,
+    originalUrl: String, 
+    customName: String,
+    createdAt: { type: Date, default: Date.now, expires: 86400 } 
+});
+
+const User = mongoose.model('User', userSchema);
+const Link = mongoose.model('Link', linkSchema);
+
+// ─── 🎨 STYLING & HELPERS ─────────────────────────────────
+
+const fontMap = {'a':'ᴀ','b':'ʙ','c':'ᴄ','d':'ᴅ','e':'ᴇ','f':'ғ','g':'ɢ','h':'ʜ','i':'ɪ','j':'ᴊ','k':'ᴋ','l':'ʟ','m':'ᴍ','n':'ɴ','o':'ᴏ','p':'ᴘ','q':'ǫ','r':'ʀ','s':'s','t':'ᴛ','u':'ᴜ','v':'ᴠ','w':'ᴡ','x':'x','y':'ʏ','z':'ᴢ','A':'ᴀ','B':'ʙ','C':'ᴄ','D':'ᴅ','E':'ᴇ','F':'ғ','G':'ɢ','H':'ʜ','I':'ɪ','J':'ᴊ','K':'ᴋ','L':'ʟ','M':'ᴍ','N':'ɴ','O':'ᴏ','P':'ᴘ','Q':'ǫ','R':'ʀ','S':'s','T':'ᴛ','U':'ᴜ','V':'ᴠ','W':'ᴡ','X':'x','Y':'ʏ','Z':'ᴢ','0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉'};
+
+function _fnt(text) {
+    if(!text) return "";
+    return text.split('').map(c => fontMap[c] || c).join('');
+}
+
+function makeBorder(title, content) {
+    const lines = content.split('\n').map(line => `┃ ${line}`).join('\n');
+    return `<b>┏━━「 ${_fnt(title)} 」━━┓</b>\n${lines}\n<b>┗━━━━━━━━━━┛</b>`;
+}
+
+// Fixed User Resolver
+async function resolveUser(msg, input) {
+    if (msg.reply_to_message) {
+        return await User.findOne({ chatId: msg.reply_to_message.from.id });
+    }
+    if (input) {
+        const cleanInput = input.trim().replace('@', '');
+        if (/^\d+$/.test(cleanInput)) {
+            return await User.findOne({ chatId: parseInt(cleanInput) });
+        } else {
+            return await User.findOne({ username: { $regex: new RegExp(`^${cleanInput}$`, 'i') } });
+        }
+    }
+    return null;
+}
+
+// ─── 🤖 BOT LOGIC (FIXED START FUNCTIONS) ──────────────────
+
+// 1. HTML Character Escape Function
+function escapeHtml(text) {
+    if (!text) return text;
+    return text.toString().replace(/&/g, "&amp;")
+               .replace(/</g, "&lt;")
+               .replace(/>/g, "&gt;")
+               .replace(/"/g, "&quot;")
+               .replace(/'/g, "&#039;");
+}
+
+// 2. Membership Check Function (Fixed for Errors)
+async function checkMembership(chatId) {
+    try {
+        const s = ['creator', 'administrator', 'member', 'restricted'];
+        
+        // We use Promise.allSettled to prevent one failure from stopping the whole check
+        const results = await Promise.allSettled([
+            bot.getChatMember(CHANNEL_ID1, chatId),
+            bot.getChatMember(CHANNEL_ID2, chatId),
+            bot.getChatMember(GROUP_ID, chatId)
+        ]);
+
+        const isMember = (res) => res.status === 'fulfilled' && res.value && s.includes(res.value.status);
+
+        const isC1 = isMember(results[0]);
+        const isC2 = isMember(results[1]);
+        const isG1 = isMember(results[2]);
+
+        // Debug Log in Render
+        if(!isC1 || !isC2 || !isG1) {
+            console.log(`User ${chatId} membership missing. C1:${isC1}, C2:${isC2}, G1:${isG1}`);
+        }
+
+        return { allJoined: isC1 && isC2 && isG1 };
+    } catch (e) { 
+        console.error("Membership Check Error:", e.message);
+        // If error occurs (e.g. bot not admin), assume false to force verify or true to bypass (safe mode: false)
+        return { allJoined: false }; 
+    }
+}
+
+// 3. START COMMAND HANDLER (Fixed)
+bot.onText(/\/start/, async (msg) => {
+    const chatId = msg.chat.id;
+    if (msg.chat.type !== 'private') return;
+
+    try {
+        let user = await User.findOne({ chatId });
+        
+        // Create User if not exists
+        if (!user) {
+            user = new User({ 
+                chatId, 
+                username: msg.from.username || "Unknown", 
+                firstName: escapeHtml(msg.from.first_name) || "User"
+            });
+            await user.save();
+            console.log(`New User Registered: ${chatId}`);
+        }
+        
+        if (user.isBanned) {
+            return bot.sendMessage(chatId, makeBorder("ʙᴀɴɴᴇᴅ", "<b>🚫: ʏᴏᴜ ᴀʀᴇ ʙᴀɴɴᴇᴅ!</b>"), {parse_mode:'HTML'});
+        }
+
+        const { allJoined } = await checkMembership(chatId);
+        
+        if (allJoined) {
+            await showMainMenu(msg);
+        } else {
+            await showVerificationMenu(msg);
+        }
+
+    } catch (error) {
+        console.error("Start Command Fatal Error:", error);
+        bot.sendMessage(chatId, "⚠️ System Error. connecting to database... try again in 5s.");
+    }
+});
+
+// 4. MAIN MENU FUNCTION
+async function showMainMenu(msg) {
+    try {
+        const cleanName = escapeHtml(msg.from.first_name || "User");
+        const mention = `<a href="tg://user?id=${msg.from.id}">${cleanName}</a>`;
+        
+        const content = `<b>┏─「 ᴜsᴇʀ ᴘʀᴏғɪʟᴇ 」</b>
+<b>┃</b> 👤 <b>ɴᴀᴍᴇ:</b> ${mention}
+<b>┃</b> 🆔 <b>ɪᴅ:</b> <code>${msg.from.id}</code>
+<b>┗───────────╼</b>
+
+<b>┏─「 ʙᴏᴛ ғᴇᴀᴛᴜʀᴇs 」</b>
+<b>┃</b> ✅ <b>ᴄᴜsᴛᴏᴍ ᴜʀʟ ɢᴇɴᴇʀᴀᴛɪᴏɴ</b>
+<b>┃</b> ✅ <b>ɪɴsᴛᴀɴᴛ ᴅᴀᴛᴀ ɴᴏᴛɪғɪᴄᴀᴛɪᴏɴ</b>
+<b>┃</b> ✅ <b>24/ʜ sᴇʀᴠᴇʀ ᴜᴘᴛɪᴍᴇ</b>
+<b>┃</b> ✅ <b>sᴇᴄᴜʀᴇ ᴅᴀᴛᴀʙᴀsᴇ</b>
+<b>┗───────────╼</b>
+
+<b>┏─「 ʜᴏᴡ ᴛᴏ ᴏᴘᴇʀᴀᴛᴇ 」</b>
+<b>┃</b> 1️⃣ <b>ᴄʟɪᴄᴋ 'ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ'</b>
+<b>┃</b> 2️⃣ <b>ᴇɴᴛᴇʀ ᴀ sʜᴏʀᴛ ɴᴀᴍᴇ ғᴏʀ ʟɪɴᴋ</b>
+<b>┃</b> 3️⃣ <b>sᴇᴛ ᴀ ᴄᴜsᴛᴏᴍ ʀᴇᴅɪʀᴇᴄᴛ ᴜʀʟ</b>
+<b>┃</b> 4️⃣ <b>sʜᴀʀᴇ ʟɪɴᴋ & ɢᴇᴛ ɪɴsᴛᴀɴᴛ ᴅᴀᴛᴀ</b>
+<b>┗───────────╼</b>
+
+<b>┏─「 sʏsᴛᴇᴍ ɪɴғᴏ 」</b>
+<b>┃</b> 👨‍💻 <b>ᴅᴇᴠᴇʟᴏᴘᴇʀ: DX-CODEX</b>
+<b>┃</b> 💬 <b>sᴇʟᴇᴄᴛ ᴀɴ ᴏᴘᴛɪᴏɴ ʙᴇʟᴏᴡ</b>
+<b>┃</b> 👇 <b>ᴜsᴇ ʙᴜᴛᴛᴏɴs ᴛᴏ ᴄᴏɴᴛʀᴏʟ</b>
+<b>┗───────────╼</b>`;
+
+        await bot.sendMessage(msg.chat.id, makeBorder("<b>ᴅᴀsʜʙᴏᴀʀᴅ</b>", content), {
+            parse_mode: 'HTML',
+            reply_markup: { 
+                keyboard: [[{ text: "🔗 ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ" }], [{ text: "👤 ᴍʏ ɪɴғᴏ" }, { text: "👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ" }]], 
+                resize_keyboard: true 
+            }
         });
     } catch (e) {
         console.log("Main Menu Error:", e.message);
@@ -245,7 +450,7 @@ async function showVerificationMenu(msg) {
     } catch (e) {
         console.log("Verify Menu Error:", e.message);
     }
-                      }
+}
 // ─── 📩 MESSAGES & STATES ─────────────────────────────────
 
 bot.on('message', async (msg) => {
