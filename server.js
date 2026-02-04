@@ -84,20 +84,23 @@ async function resolveUser(msg, input) {
 // ─── 🤖 BOT LOGIC ─────────────────────────────────────────
 
 async function checkMembership(chatId) {
+async function checkMembership(chatId) {
     try {
         const s = ['creator', 'administrator', 'member', 'restricted'];
-        const c1 = await bot.getChatMember(CHANNEL_ID1, chatId);
-        const c2 = await bot.getChatMember(CHANNEL_ID2, chatId);
-        const g1 = await bot.getChatMember(GROUP_ID, chatId);
+        const [c1, c2, g1] = await Promise.all([
+            bot.getChatMember(CHANNEL_ID1, chatId),
+            bot.getChatMember(CHANNEL_ID2, chatId),
+            bot.getChatMember(GROUP_ID, chatId)
+        ]);
         return { allJoined: s.includes(c1.status) && s.includes(c2.status) && s.includes(g1.status) };
-    } catch (e) { return { allJoined: false }; }
+    } catch (e) { 
+        return { allJoined: false }; 
+    }
 }
-
-const userState = {};
 
 bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
-    if (msg.chat.type !== 'private') return; // Group a spam na korar jonno
+    if (msg.chat.type !== 'private') return;
 
     let user = await User.findOne({ chatId });
     if (!user) {
@@ -105,7 +108,7 @@ bot.onText(/\/start/, async (msg) => {
         await user.save();
     }
     
-    if (user.isBanned) return bot.sendMessage(chatId, makeBorder("ʙᴀɴɴᴇᴅ", "🚫: ʏᴏᴜ ᴀʀᴇ ʙᴀɴɴᴇᴅ!"), {parse_mode:'HTML'});
+    if (user.isBanned) return bot.sendMessage(chatId, makeBorder("ʙᴀɴɴᴇᴅ", "<b>🚫: ʏᴏᴜ ᴀʀᴇ ʙᴀɴɴᴇᴅ!</b>"), {parse_mode:'HTML'});
 
     const { allJoined } = await checkMembership(chatId);
     if (allJoined) showMainMenu(msg);
@@ -114,8 +117,7 @@ bot.onText(/\/start/, async (msg) => {
 
 function showMainMenu(msg) {
     const mention = `<a href="tg://user?id=${msg.from.id}">${msg.from.first_name}</a>`;
-
-const content = `<b>┏─「 ᴜsᴇʀ ᴘʀᴏғɪʟᴇ 」</b>
+    const content = `<b>┏─「 ᴜsᴇʀ ᴘʀᴏғɪʟᴇ 」</b>
 <b>┃</b> 👤 <b>ɴᴀᴍᴇ:</b> ${mention}
 <b>┃</b> 🆔 <b>ɪᴅ:</b> <code>${msg.from.id}</code>
 <b>┗───────────╼</b>
@@ -139,15 +141,18 @@ const content = `<b>┏─「 ᴜsᴇʀ ᴘʀᴏғɪʟᴇ 」</b>
 <b>┃</b> 💬 <b>sᴇʟᴇᴄᴛ ᴀɴ ᴏᴘᴛɪᴏɴ ʙᴇʟᴏᴡ</b>
 <b>┃</b> 👇 <b>ᴜsᴇ ʙᴜᴛᴛᴏɴs ᴛᴏ ᴄᴏɴᴛʀᴏʟ</b>
 <b>┗───────────╼</b>`;
-    bot.sendMessage(msg.chat.id, makeBorder("ᴅᴀsʜʙᴏᴀʀᴅ", content), {
+
+    bot.sendMessage(msg.chat.id, makeBorder("<b>ᴅᴀsʜʙᴏᴀʀᴅ</b>", content), {
         parse_mode: 'HTML',
-        reply_markup: { keyboard: [[{ text: "🔗 ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ" }], [{ text: "👤 ᴍʏ ɪɴғᴏ" }, { text: "👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ" }]], resize_keyboard: true }
+        reply_markup: { 
+            keyboard: [[{ text: "🔗 ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ" }], [{ text: "👤 ᴍʏ ɪɴғᴏ" }, { text: "👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ" }]], 
+            resize_keyboard: true 
+        }
     });
 }
 
 function showVerificationMenu(msg) {
     const userMention = `<a href="tg://user?id=${msg.from.id}">${msg.from.first_name}</a>`;
-    
     const dashboard = `<b>👋: ʜᴇʟʟᴏ, ${userMention}</b>
 
 <b>┏━━「 ᴅᴀsʜʙᴏᴀʀᴅ 」━━┓</b>
@@ -175,7 +180,7 @@ function showVerificationMenu(msg) {
 <b>┃ ┗───────────╼</b>
 <b>┗━━━━━━━━━━┛</b>
 
-<blockquote>📢: ᴘʟᴇᴀsᴇ ᴊᴏɪɴ ᴏᴜʀ ᴄʜᴀɴɴᴇʟs</blockquote>\n`;
+<blockquote><b>📢: ᴘʟᴇᴀsᴇ ᴊᴏɪɴ ᴏᴜʀ ᴄʜᴀɴɴᴇʟs</b></blockquote>`;
 
     bot.sendMessage(msg.chat.id, makeBorder("<b>👋 ᴡᴇʟᴄᴏᴍᴇ</b>", dashboard), {
         parse_mode: 'HTML',
@@ -188,7 +193,7 @@ function showVerificationMenu(msg) {
             ]
         }
     });
-                              }
+                }
 // ─── 📩 MESSAGES & STATES ─────────────────────────────────
 
 bot.on('message', async (msg) => {
