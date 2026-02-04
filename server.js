@@ -247,11 +247,52 @@ bot.on('message', async (msg) => {
         });
     } 
     else if (text === "👤 ᴍʏ ɪɴғᴏ") {
-        const info = `👤: ${user.firstName}\n💰: ${user.coins} ᴄᴏɪɴs\n🎁: ${user.freeUrlsLeft} ғʀᴇᴇ\n🆔: <code>${user.chatId}</code>`;
-        bot.sendMessage(chatId, makeBorder("ᴘʀᴏғɪʟᴇ", info), { parse_mode: 'HTML' });
-    } 
+        // ১. একটিভ লিংক কাউন্ট করা (ডাটাবেস থেকে)
+        const activeLinkCount = await Link.countDocuments({ creatorChatId: chatId });
+        
+        // ২. জয়েনিং ডেট ফরম্যাট করা
+        const joinDate = user.joinedAt ? new Date(user.joinedAt).toLocaleDateString() : "N/A";
+        
+        // ৩. ফ্রি কয়েন চেক করা (থাকলে দেখাবে, না থাকলে ভেরিয়েবল খালি থাকবে)
+        let freeLine = "";
+        if (user.freeUrlsLeft > 0) {
+            freeLine = `<b>┃ ┃ 🎁 ғʀᴇᴇ: ${user.freeUrlsLeft}</b>\n`;
+        }
+
+        // ৪. স্টাইলিশ টেক্সট জেনারেট করা
+        const titleMain = _fnt("YOUR INFO");
+        const titleProf = _fnt("USER PROFILE");
+        const titleDet = _fnt("PROFILE DETAILS"); // Profile details এর স্টাইলিশ রূপ
+        const btnText = _fnt("SUPPORT GROUP");
+
+        // ৫. মেসেজ বডি সাজানো (নেস্টেড বর্ডার সহ)
+        const infoMsg = 
+`<b>┏━━「 ${titleMain} 」━━┓</b>
+<b>┃ ┏─「 ${titleProf} 」</b>
+<b>┃ ┃ 👤 ɴᴀᴍᴇ: ${user.firstName}</b>
+<b>┃ ┃ 🆔 ɪᴅ: <code>${user.chatId}</code></b>
+<b>┃ ┗───────────╼</b>
+<b>┃</b> 
+<b>┃ ┏─「 ${titleDet} 」</b>
+<b>┃ ┃ 💰 ᴄᴏɪɴs: ${user.coins}</b>
+${freeLine}<b>┃ ┃ 🛡 ʙᴀɴ: ${user.isBanned ? "Yes" : "No"}</b>
+<b>┃ ┃ 📅 ᴅᴀᴛᴇ: ${joinDate}</b>
+<b>┃ ┃ 🔗 ʟɪɴᴋs: ${activeLinkCount}</b>
+<b>┃ ┗───────────╼</b>
+<b>┗━━━━━━━━━━┛</b>`;
+
+        // ৬. মেসেজ পাঠানো (সাথে বাটন)
+        bot.sendMessage(chatId, infoMsg, { 
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: `📢 ${btnText}`, url: `https://t.me/${GROUP_ID.replace('@', '')}` }]
+                ]
+            }
+        });
+                    }
     else if (text === "👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ") {
-        bot.sendMessage(chatId, makeBorder("ᴅᴇᴠᴇʟᴏᴘᴇʀ", "👨‍💻: ᴄᴏᴅᴇᴅ ʙʏ ᴅx-ᴄᴏᴅᴇx (ɴɪᴋᴏ)\n🛡: ᴘᴏᴡᴇʀᴇᴅ ʙʏ ᴄᴏᴅᴇx ᴛᴇᴀᴍ"), { parse_mode: 'HTML' });
+        bot.sendMessage(chatId, makeBorder("ᴅᴇᴠᴇʟᴏᴘᴇʀ", "👨‍💻: ᴄᴏᴅᴇᴅ ʙʏ ᴅx-ᴄᴏᴅᴇx\n🛡: ᴘᴏᴡᴇʀᴇᴅ ʙʏ ᴄᴏᴅᴇx—ᴛᴇᴀᴍ"), { parse_mode: 'HTML' });
     }
     
     // Custom Link Steps
