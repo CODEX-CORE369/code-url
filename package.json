@@ -2,7 +2,7 @@
   "name": "dx-codex-bot",
   "version": "3.0.0",
   "description": "Advanced multi-user tracking bot with camera & redirect",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
