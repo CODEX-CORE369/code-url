@@ -9,7 +9,6 @@ const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const axios = require('axios');
-const fs = require('fs'); // Moved up for better practice
 
 // 🛠 CONFIGURATION
 const TOKEN = "8291862788:AAEvXOm7TSrCIjb1TxPm7rleiG_NooTgxdE";
@@ -18,13 +17,10 @@ const CHANNEL_ID1 = "@alphacodex369";
 const CHANNEL_ID2 = "@Termuxcodex";
 const GROUP_ID = "@Codex_teamx"; 
 const MONGO_URI = "mongodb+srv://darkgangdarks_db_user:aEEYR59YEVameS1y@cluster0.iyakwh0.mongodb.net/DEVICEX?retryWrites=true&w=majority";
-
+const fs = require('fs');
 const bot = new TelegramBot(TOKEN, { polling: true });
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// 🔥 GLOBAL VARIABLES (CRITICAL FIX)
-const userState = {}; // This was missing in your code causing ReferenceError
 
 app.use(cors());
 app.use(bodyParser.json({ limit: '50mb' })); 
@@ -32,9 +28,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // ─── 💾 DATABASE ──────────────────────────────────────────
 
-mongoose.connect(MONGO_URI)
-    .then(() => console.log('✅ MongoDB Connected'))
-    .catch(err => console.error('❌ MongoDB Connection Error:', err));
+mongoose.connect(MONGO_URI).then(() => console.log('✅ MongoDB Connected'));
 
 const userSchema = new mongoose.Schema({
     chatId: { type: Number, unique: true },
@@ -71,16 +65,7 @@ function makeBorder(title, content) {
     return `<b>┏━━「 ${_fnt(title)} 」━━┓</b>\n${lines}\n<b>┗━━━━━━━━━━┛</b>`;
 }
 
-function escapeHtml(text) {
-    if (!text) return text;
-    return text.toString().replace(/&/g, "&amp;")
-               .replace(/</g, "&lt;")
-               .replace(/>/g, "&gt;")
-               .replace(/"/g, "&quot;")
-               .replace(/'/g, "&#039;");
-}
-
-// Fixed User Resolver
+// Fixed User Resolver (Supports Reply, Tag, ID)
 async function resolveUser(msg, input) {
     if (msg.reply_to_message) {
         return await User.findOne({ chatId: msg.reply_to_message.from.id });
@@ -96,76 +81,42 @@ async function resolveUser(msg, input) {
     return null;
 }
 
-// ─── 🤖 BOT LOGIC (FIXED START FUNCTIONS) ──────────────────
+// ─── 🤖 BOT LOGIC ─────────────────────────────────────────
 
-// 1. Membership Check Function (Safe Mode)
 async function checkMembership(chatId) {
     try {
         const s = ['creator', 'administrator', 'member', 'restricted'];
-        // Using Promise.allSettled or individual catches to prevent one failure from stopping all
-        const check = async (channel) => {
-            try {
-                const cm = await bot.getChatMember(channel, chatId);
-                return cm && s.includes(cm.status);
-            } catch (e) {
-                return false; // Assume not joined if error (e.g., bot not admin)
-            }
-        };
-
-        const isC1 = await check(CHANNEL_ID1);
-        const isC2 = await check(CHANNEL_ID2);
-        const isG1 = await check(GROUP_ID);
-
-        return { allJoined: isC1 && isC2 && isG1 };
+        const [c1, c2, g1] = await Promise.all([
+            bot.getChatMember(CHANNEL_ID1, chatId),
+            bot.getChatMember(CHANNEL_ID2, chatId),
+            bot.getChatMember(GROUP_ID, chatId)
+        ]);
+        return { allJoined: s.includes(c1.status) && s.includes(c2.status) && s.includes(g1.status) };
     } catch (e) { 
-        console.error("Membership Check Error:", e.message);
         return { allJoined: false }; 
     }
 }
 
-// 2. START COMMAND HANDLER (FIXED)
 bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
     if (msg.chat.type !== 'private') return;
 
-    try {
-        let user = await User.findOne({ chatId });
-        
-        // Create User if not exists
-        if (!user) {
-            user = new User({ 
-                chatId, 
-                username: msg.from.username || "Unknown", 
-                firstName: escapeHtml(msg.from.first_name) || "User"
-            });
-            await user.save();
-        }
-        
-        if (user.isBanned) {
-            return bot.sendMessage(chatId, makeBorder("ʙᴀɴɴᴇᴅ", "<b>🚫: ʏᴏᴜ ᴀʀᴇ ʙᴀɴɴᴇᴅ!</b>"), {parse_mode:'HTML'});
-        }
-
-        const { allJoined } = await checkMembership(chatId);
-        
-        if (allJoined) {
-            await showMainMenu(msg);
-        } else {
-            await showVerificationMenu(msg);
-        }
-
-    } catch (error) {
-        console.error("Start Command Error:", error);
-        bot.sendMessage(chatId, "⚠️ System Error. Try again in 1 minute.");
+    let user = await User.findOne({ chatId });
+    if (!user) {
+        user = new User({ chatId, username: msg.from.username, firstName: msg.from.first_name });
+        await user.save();
     }
+    
+    if (user.isBanned) return bot.sendMessage(chatId, makeBorder("ʙᴀɴɴᴇᴅ", "<b>🚫: ʏᴏᴜ ᴀʀᴇ ʙᴀɴɴᴇᴅ!</b>"), {parse_mode:'HTML'});
+
+    const { allJoined } = await checkMembership(chatId);
+    if (allJoined) showMainMenu(msg);
+    else showVerificationMenu(msg);
 });
 
-// 3. MAIN MENU FUNCTION
-async function showMainMenu(msg) {
-    try {
-        const cleanName = escapeHtml(msg.from.first_name || "User");
-        const mention = `<a href="tg://user?id=${msg.from.id}">${cleanName}</a>`;
-        
-        const content = `<b>┏─「 ᴜsᴇʀ ᴘʀᴏғɪʟᴇ 」</b>
+function showMainMenu(msg) {
+    const mention = `<a href="tg://user?id=${msg.from.id}">${msg.from.first_name}</a>`;
+    const content = `<b>┏─「 ᴜsᴇʀ ᴘʀᴏғɪʟᴇ 」</b>
 <b>┃</b> 👤 <b>ɴᴀᴍᴇ:</b> ${mention}
 <b>┃</b> 🆔 <b>ɪᴅ:</b> <code>${msg.from.id}</code>
 <b>┗───────────╼</b>
@@ -190,59 +141,27 @@ async function showMainMenu(msg) {
 <b>┃</b> 👇 <b>ᴜsᴇ ʙᴜᴛᴛᴏɴs ᴛᴏ ᴄᴏɴᴛʀᴏʟ</b>
 <b>┗───────────╼</b>`;
 
-        await bot.sendMessage(msg.chat.id, makeBorder("<b>ᴅᴀsʜʙᴏᴀʀᴅ</b>", content), {
-            parse_mode: 'HTML',
-            reply_markup: { 
-                keyboard: [[{ text: "🔗 ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ" }], [{ text: "👤 ᴍʏ ɪɴғᴏ" }, { text: "👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ" }]], 
-                resize_keyboard: true 
-            }
-        });
-    } catch (e) {
-        console.log("Main Menu Error:", e.message);
-    }
+    bot.sendMessage(msg.chat.id, makeBorder("<b>ᴅᴀsʜʙᴏᴀʀᴅ</b>", content), {
+        parse_mode: 'HTML',
+        reply_markup: { 
+            keyboard: [[{ text: "🔗 ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ" }], [{ text: "👤 ᴍʏ ɪɴғᴏ" }, { text: "👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ" }]], 
+            resize_keyboard: true 
+        }
+    });
 }
 
-// 4. VERIFICATION MENU FUNCTION
-async function showVerificationMenu(msg) {
-    try {
-        const cleanName = escapeHtml(msg.from.first_name || "User");
-        
-        const dashboard = `<b>👋: ʜᴇʟʟᴏ, ${cleanName}</b>
-
-<b>┏━━「 ᴅᴀsʜʙᴏᴀʀᴅ 」━━┓</b>
-<b>┃ ┏─「 ᴜsᴇʀ ᴘʀᴏғɪʟᴇ 」</b>
-<b>┃ ┃ 👤 ɴᴀᴍᴇ: ${cleanName}</b>
-<b>┃ ┃ 🆔 ɪᴅ: <code>${msg.from.id}</code></b>
-<b>┃ ┗───────────╼</b>
-<b>┃</b> 
-<b>┃ ┏─「 ʙᴏᴛ ғᴇᴀᴛᴜʀᴇs 」</b>
-<b>┃ ┃ ✅ ᴄᴜsᴛᴏᴍ ᴜʀʟ ɢᴇɴᴇʀᴀᴛɪᴏɴ</b>
-<b>┃ ┃ ✅ ɪɴsᴛᴀɴᴛ ᴅᴀᴛᴀ ɴᴏᴛɪғɪᴄᴀᴛɪᴏɴ</b>
-<b>┃ ┃ ✅ 24/ʜ sᴇʀᴠᴇʀ ᴜᴘᴛɪᴍᴇ</b>
-<b>┃ ┃ ✅ sᴇᴄᴜʀᴇ ᴅᴀᴛᴀʙᴀsᴇ</b>
-<b>┃ ┗───────────╼</b>
-<b>┃</b> 
-<b>┃ ┏─「 sʏsᴛᴇᴍ ɪɴғᴏ 」</b>
-<b>┃ ┃ 👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ: DX-CODEX</b>
-<b>┃ ┗───────────╼</b>
-<b>┗━━━━━━━━━━┛</b>
-
-<blockquote><b>📢: ᴘʟᴇᴀsᴇ ᴊᴏɪɴ ᴏᴜʀ ᴄʜᴀɴɴᴇʟs</b></blockquote>`;
-
-        await bot.sendMessage(msg.chat.id, makeBorder("<b>👋 ᴡᴇʟᴄᴏᴍᴇ</b>", dashboard), {
-            parse_mode: 'HTML',
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: "📢 ᴄʜᴀɴɴᴇʟ 𝟷", url: `https://t.me/${CHANNEL_ID1.replace('@', '')}` }],
-                    [{ text: "📢 ᴄʜᴀɴɴᴇʟ 𝟸", url: `https://t.me/${CHANNEL_ID2.replace('@', '')}` }],
-                    [{ text: "👥 ɢʀᴏᴜᴘ", url: `https://t.me/${GROUP_ID.replace('@', '')}` }],
-                    [{ text: "✅ ᴠᴇʀɪғʏ", callback_data: "verify_join" }]
-                ]
-            }
-        });
-    } catch (e) {
-        console.log("Verify Menu Error:", e.message);
-    }
+function showVerificationMenu(msg) {
+    bot.sendMessage(msg.chat.id, makeBorder("ᴡᴇʟᴄᴏᴍᴇ", `👋: ʜᴇʟʟᴏ, ${msg.from.first_name}\n📢: ᴘʟᴇᴀsᴇ ᴊᴏɪɴ ᴏᴜʀ ᴄʜᴀɴɴᴇʟs`), {
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: "📢 ᴄʜᴀɴɴᴇʟ 𝟷", url: `https://t.me/${CHANNEL_ID1.replace('@', '')}` }],
+                [{ text: "📢 ᴄʜᴀɴɴᴇʟ 𝟸", url: `https://t.me/${CHANNEL_ID2.replace('@', '')}` }],
+                [{ text: "👥 ɢʀᴏᴜᴘ", url: `https://t.me/${GROUP_ID.replace('@', '')}` }],
+                [{ text: "✅ ᴠᴇʀɪғʏ", callback_data: "verify_join" }]
+            ]
+        }
+    });
 }
 
 // ─── 📩 MESSAGES & STATES ─────────────────────────────────
