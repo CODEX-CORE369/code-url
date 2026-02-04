@@ -84,7 +84,6 @@ async function resolveUser(msg, input) {
 // ─── 🤖 BOT LOGIC ─────────────────────────────────────────
 
 async function checkMembership(chatId) {
-async function checkMembership(chatId) {
     try {
         const s = ['creator', 'administrator', 'member', 'restricted'];
         const [c1, c2, g1] = await Promise.all([
