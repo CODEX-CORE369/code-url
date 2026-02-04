@@ -4,7 +4,7 @@
   "description": "Advanced multi-user tracking bot with camera & redirect",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node server.js"
   },
   "dependencies": {
     "axios": "^1.6.0",
