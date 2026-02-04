@@ -81,17 +81,27 @@ async function resolveUser(msg, input) {
     return null;
 }
 
-// ─── 🤖 BOT LOGIC ─────────────────────────────────────────
+// ─── 🤖 BOT LOGIC (FIXED START FUNCTIONS) ──────────────────
+
+// এই ভেরিয়েবলটি মিসিং ছিল, তাই কোড ক্র্যাশ করতো। এটা অবশ্যই রাখবে।
+const userState = {}; 
 
 async function checkMembership(chatId) {
     try {
         const s = ['creator', 'administrator', 'member', 'restricted'];
+        // মেম্বারশিপ চেক করার সময় এরর হ্যান্ডেলিং জরুরি
         const [c1, c2, g1] = await Promise.all([
-            bot.getChatMember(CHANNEL_ID1, chatId),
-            bot.getChatMember(CHANNEL_ID2, chatId),
-            bot.getChatMember(GROUP_ID, chatId)
+            bot.getChatMember(CHANNEL_ID1, chatId).catch(() => null),
+            bot.getChatMember(CHANNEL_ID2, chatId).catch(() => null),
+            bot.getChatMember(GROUP_ID, chatId).catch(() => null)
         ]);
-        return { allJoined: s.includes(c1.status) && s.includes(c2.status) && s.includes(g1.status) };
+        
+        // যদি বট অ্যাডমিন না থাকে তবে null রিটার্ন আসতে পারে, তাই সেফটি চেক
+        const isC1 = c1 && s.includes(c1.status);
+        const isC2 = c2 && s.includes(c2.status);
+        const isG1 = g1 && s.includes(g1.status);
+
+        return { allJoined: isC1 && isC2 && isG1 };
     } catch (e) { 
         return { allJoined: false }; 
     }
@@ -101,17 +111,31 @@ bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
     if (msg.chat.type !== 'private') return;
 
-    let user = await User.findOne({ chatId });
-    if (!user) {
-        user = new User({ chatId, username: msg.from.username, firstName: msg.from.first_name });
-        await user.save();
-    }
-    
-    if (user.isBanned) return bot.sendMessage(chatId, makeBorder("ʙᴀɴɴᴇᴅ", "<b>🚫: ʏᴏᴜ ᴀʀᴇ ʙᴀɴɴᴇᴅ!</b>"), {parse_mode:'HTML'});
+    try {
+        let user = await User.findOne({ chatId });
+        if (!user) {
+            user = new User({ 
+                chatId, 
+                username: msg.from.username || "Unknown", 
+                firstName: msg.from.first_name || "User"
+            });
+            await user.save();
+        }
+        
+        if (user.isBanned) {
+            return bot.sendMessage(chatId, makeBorder("ʙᴀɴɴᴇᴅ", "<b>🚫: ʏᴏᴜ ᴀʀᴇ ʙᴀɴɴᴇᴅ!</b>"), {parse_mode:'HTML'});
+        }
 
-    const { allJoined } = await checkMembership(chatId);
-    if (allJoined) showMainMenu(msg);
-    else showVerificationMenu(msg);
+        const { allJoined } = await checkMembership(chatId);
+        if (allJoined) {
+            showMainMenu(msg);
+        } else {
+            showVerificationMenu(msg);
+        }
+    } catch (error) {
+        console.error("Start Error:", error);
+        bot.sendMessage(chatId, "⚠️ System Error. Try again later.");
+    }
 });
 
 function showMainMenu(msg) {
@@ -192,7 +216,7 @@ function showVerificationMenu(msg) {
             ]
         }
     });
-                }
+    }
 // ─── 📩 MESSAGES & STATES ─────────────────────────────────
 
 bot.on('message', async (msg) => {
