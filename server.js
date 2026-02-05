@@ -297,26 +297,55 @@ bot.on('callback_query', async (query) => {
     if (data === 'verify_join') {
         try {
             const { allJoined } = await checkMembership(chatId);
-            if (allJoined) { 
-                // Fix: Answer query immediately to stop loading circle
-                await bot.answerCallbackQuery(query.id, { text: "✅ Verified!" });
-                
-                // Safe delete
+            if (allJoined) {
+                // Verify confirm notification
+                await bot.answerCallbackQuery(query.id, { text: "✅ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ sᴜᴄᴄᴇss!" });
+
+                // Purono message remove kora
                 try {
-                    await bot.deleteMessage(chatId, msg.message_id);
-                } catch(e) { /* Ignore delete error */ }
-                
-                showMainMenu(query); 
-            }
-            else {
-                bot.answerCallbackQuery(query.id, { text: "⚠️ ᴊᴏɪɴ ᴀʟʟ ᴄʜᴀɴɴᴇʟs ғɪʀsᴛ!", show_alert: true });
+                    await bot.deleteMessage(chat_id, msg.message_id);
+                } catch (e) { /* message already deleted */ }
+
+                const user = await User.findOne({ chatId });
+                const name = escapeHtml(user.firstName || "User");
+                const mention = `<a href="tg://user?id=${chatId}">${name}</a>`;
+
+                // Stylish Message Body
+                const title = _fnt("SYSTEM READY");
+                const body = 
+`👤 ᴜsᴇʀ: ${mention}
+🆔 ɪᴅ: <code>${chatId}</code>
+━━━━━━━━━━┛
+🤖 <b> ᴛʜɪs ɪs ᴀ ᴅᴇᴠɪᴄᴇ ᴅᴀᴛᴀ ᴅᴜᴍᴘ</b>
+        <b>ᴘʜɪsʜɪɴɢ ʙᴏᴛ</b>
+🔗 <b>ɪғ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴄʀᴇᴀᴛᴇ ᴀ ᴜʀʟ</b>
+      <b>ᴄʟɪᴄᴋ ᴛʜᴇ ʙᴜᴛᴛᴏɴ ʙᴇʟᴏᴡ</b>`;
+
+                // Send New Message with Auto Keyboard
+                await bot.sendMessage(chatId, makeBorder(title, body), {
+                    parse_mode: 'HTML',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [{ text: "🔗 ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ", callback_data: "create_custom" }]
+                        ],
+                        keyboard: [
+                            [{ text: "🔗 ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ" }],
+                            [{ text: "👤 ᴍʏ ɪɴғᴏ" }, { text: "👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ" }]
+                        ],
+                        resize_keyboard: true
+                    }
+                });
+            } else {
+                bot.answerCallbackQuery(query.id, { 
+                    text: "⚠️ ᴊᴏɪɴ ᴀʟʟ ᴄʜᴀɴɴᴇʟs ғɪʀsᴛ!", 
+                    show_alert: true 
+                });
             }
         } catch (error) {
             console.error(error);
-            // Prevent button freeze on error
-            bot.answerCallbackQuery(query.id, { text: "⚠️ Server Error. Try again.", show_alert: true });
+            bot.answerCallbackQuery(query.id, { text: "⚠️ Server Error!" });
         }
-    } 
+    }
     else if (data === 'create_custom') {
         userState[chatId] = { step: 'await_custom_name' };
         bot.sendMessage(chatId, makeBorder("ᴄᴜsᴛᴏᴍ", "✏️: sᴇɴᴅ ʏᴏᴜʀ ᴄᴜsᴛᴏᴍ ʟɪɴᴋ ɴᴀᴍᴇ"), { parse_mode: 'HTML' });
