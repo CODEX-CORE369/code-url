@@ -69,28 +69,6 @@ function _fnt(text) {
     return text.split('').map(c => fontMap[c] || c).join('');
 }
 
-// Fixed makeBorder: এটি টাইটেল থেকে HTML ট্যাগ পরিষ্কার করে ফন্ট স্টাইল করবে
-function makeBorder(title, content) {
-    const cleanTitle = title.replace(/<[^>]*>?/gm, ''); 
-    const lines = content.split('\n').map(line => `┃ ${line}`).join('\n');
-    return `<b>┏━━「 ${_fnt(cleanTitle)} 」━━┓</b>\n${lines}\n<b>┗━━━━━━━━━━┛</b>`;
-}
-
-// Fixed User Resolver
-async function resolveUser(msg, input) {
-    if (msg.reply_to_message) {
-        return await User.findOne({ chatId: msg.reply_to_message.from.id });
-    }
-    if (input) {
-        const cleanInput = input.trim().replace('@', '');
-        if (/^\d+$/.test(cleanInput)) {
-            return await User.findOne({ chatId: parseInt(cleanInput) });
-        } else {
-            return await User.findOne({ username: { $regex: new RegExp(`^${cleanInput}$`, 'i') } });
-        }
-    }
-    return null;
-}
 
 // ─── 🤖 BOT LOGIC (FIXED START FUNCTIONS) ──────────────────
 // Keep makeBorder for other functions
