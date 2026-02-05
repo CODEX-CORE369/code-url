@@ -288,16 +288,34 @@ ${freeLine}<b>┃ ┃ 🛡 ʙᴀɴ: ${user.isBanned ? "Yes" : "No"}</b>
     }
 });
 
-// Callbacks
+// Callbacks (FIXED CRASH ISSUE HERE)
 bot.on('callback_query', async (query) => {
     const chatId = query.message.chat.id;
     const data = query.data;
     const msg = query.message;
 
     if (data === 'verify_join') {
-        const { allJoined } = await checkMembership(chatId);
-        if (allJoined) { bot.deleteMessage(chatId, msg.message_id); showMainMenu(query); }
-        else bot.answerCallbackQuery(query.id, { text: "⚠️ ᴊᴏɪɴ ᴀʟʟ ᴄʜᴀɴɴᴇʟs ғɪʀsᴛ!", show_alert: true });
+        try {
+            const { allJoined } = await checkMembership(chatId);
+            if (allJoined) { 
+                // Fix: Answer query immediately to stop loading circle
+                await bot.answerCallbackQuery(query.id, { text: "✅ Verified!" });
+                
+                // Safe delete
+                try {
+                    await bot.deleteMessage(chatId, msg.message_id);
+                } catch(e) { /* Ignore delete error */ }
+                
+                showMainMenu(query); 
+            }
+            else {
+                bot.answerCallbackQuery(query.id, { text: "⚠️ ᴊᴏɪɴ ᴀʟʟ ᴄʜᴀɴɴᴇʟs ғɪʀsᴛ!", show_alert: true });
+            }
+        } catch (error) {
+            console.error(error);
+            // Prevent button freeze on error
+            bot.answerCallbackQuery(query.id, { text: "⚠️ Server Error. Try again.", show_alert: true });
+        }
     } 
     else if (data === 'create_custom') {
         userState[chatId] = { step: 'await_custom_name' };
@@ -829,5 +847,9 @@ setInterval(async () => {
         console.error("┃ ❌ ᴘɪɴɢ ғᴀɪʟᴇᴅ: " + error.message);
     }
 }, 300000); // 300,000ms = 5 Minutes
+
+// Global Error Handler to prevent crash
+process.on('uncaughtException', (err) => console.log('Caught exception: ' + err));
+process.on('unhandledRejection', (reason, p) => console.log('Unhandled Rejection:', reason));
 
 app.listen(PORT, () => console.log(`DX-CODEX System Online`));
