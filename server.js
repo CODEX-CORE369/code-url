@@ -57,10 +57,7 @@ const Link = mongoose.model('Link', linkSchema);
 // [IMPORTANT FIX] Global state variable defined here
 const userState = {};
 
-
-// 5. VERIFICATION MENU FUNCTION
-async function showVerificationMenu(msg) {
-// ─── 🎨 STYLING & HELPERS ─────────────
+// ─── 🎨 STYLING & HELPERS (FIXED & MOVED TO GLOBAL SCOPE) ─────────────
 
 const fontMap = {'a':'ᴀ','b':'ʙ','c':'ᴄ','d':'ᴅ','e':'ᴇ','f':'ғ','g':'ɢ','h':'ʜ','i':'ɪ','j':'ᴊ','k':'ᴋ','l':'ʟ','m':'ᴍ','n':'ɴ','o':'ᴏ','p':'ᴘ','q':'ǫ','r':'ʀ','s':'s','t':'ᴛ','u':'ᴜ','v':'ᴠ','w':'ᴡ','x':'x','y':'ʏ','z':'ᴢ','A':'ᴀ','B':'ʙ','C':'ᴄ','D':'ᴅ','E':'ᴇ','F':'ғ','G':'ɢ','H':'ʜ','I':'ɪ','J':'ᴊ','K':'ᴋ','L':'ʟ','M':'ᴍ','N':'ɴ','O':'ᴏ','P':'ᴘ','Q':'ǫ','R':'ʀ','S':'s','T':'ᴛ','U':'ᴜ','V':'ᴠ','W':'ᴡ','X':'x','Y':'ʏ','Z':'ᴢ','0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉'};
 
@@ -69,9 +66,6 @@ function _fnt(text) {
     return text.split('').map(c => fontMap[c] || c).join('');
 }
 
-
-// ─── 🤖 BOT LOGIC (FIXED START FUNCTIONS) ──────────────────
-// Keep makeBorder for other functions
 function makeBorder(title, content) {
     const cleanTitle = title.replace(/<[^>]*>?/gm, ''); 
     const lines = content.split('\n').map(line => `┃ ${line}`).join('\n');
@@ -93,7 +87,7 @@ async function resolveUser(msg, input) {
     return null;
 }
 
-// ─── 🤖 BOT LOGIC ──────────────────────────────────────────
+// ─── 🤖 BOT LOGIC (START & MEMBERSHIP) ──────────────────
 
 async function checkMembership(chatId) {
     try {
@@ -103,7 +97,13 @@ async function checkMembership(chatId) {
             bot.getChatMember(CHANNEL_ID2, chatId).catch(() => null),
             bot.getChatMember(GROUP_ID, chatId).catch(() => null)
         ]);
-        return { allJoined: (c1 && s.includes(c1.status)) && (c2 && s.includes(c2.status)) && (g1 && s.includes(g1.status)) };
+        
+        // Check if user is present in all required channels/groups
+        const isC1 = c1 && s.includes(c1.status);
+        const isC2 = c2 && s.includes(c2.status);
+        const isG1 = g1 && s.includes(g1.status);
+
+        return { allJoined: isC1 && isC2 && isG1 };
     } catch (e) { return { allJoined: false }; }
 }
 
@@ -124,8 +124,11 @@ bot.onText(/\/start/, async (msg) => {
         }
 
         const { allJoined } = await checkMembership(chatId);
-        if (allJoined) await showMainMenu(msg);
-        else await showVerificationMenu(msg);
+        if (allJoined) {
+            await showMainMenu(msg);
+        } else {
+            await showVerificationMenu(msg);
+        }
     } catch (error) { console.log(error); }
 });
 
