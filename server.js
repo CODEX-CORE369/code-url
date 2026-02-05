@@ -175,13 +175,12 @@ async function showVerificationMenu(msg) {
     const cleanName = escapeHtml(msg.from.first_name || "User");
     
     const dashboard = `<b>┏━━「 ${_fnt("WELCOME")} 」━━┓</b>
-┃ 👋: ʜᴇʟʟᴏ, <a href="tg://user?id=${chatId}">${cleanName}</a>
-┃ <b>┏─「 ᴜsᴇʀ ᴘʀᴏғɪʟᴇ 」</b>
-┃ ┃ 👤 ɴᴀᴍᴇ: ${cleanName}
-┃ ┃ 🆔 ɪᴅ: <code>${chatId}</code>
+┃ <b>┏─「 👋 ʜᴇʟʟᴏ ᴜsᴇʀ 」</b>
+┃ ┃ 👤 <b>ɴᴀᴍᴇ: <a href="tg://user?id=${chatId}">${cleanName}</a></b>
+┃ ┃ 🆔 <b>ɪᴅ:</b> <code>${chatId}</code>
 ┃ ┗───────────╼
 ┃ <b>┏─「 sʏsᴛᴇᴍ ɪɴғᴏ 」</b>
-┃ ┃ 👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ: DX-CODEX
+┃ ┃ 👨‍💻 <b>ᴅᴇᴠᴇʟᴏᴘᴇʀ: DX-CODEX</b>
 ┃ ┗───────────╼
 <b>┗━━━━━━━━━━┛</b>
 <blockquote><b>📢: ᴘʟᴇᴀsᴇ ᴊᴏɪɴ ᴏᴜʀ ᴄʜᴀɴɴᴇʟs</b></blockquote>`;
@@ -313,10 +312,10 @@ bot.on('callback_query', async (query) => {
                 // Stylish Message Body
                 const title = _fnt("SYSTEM READY");
                 const body = 
-`👤 ᴜsᴇʀ: ${mention}
-🆔 ɪᴅ: <code>${chatId}</code>
-━━━━━━━━━━┛
-🤖 <b> ᴛʜɪs ɪs ᴀ ᴅᴇᴠɪᴄᴇ ᴅᴀᴛᴀ ᴅᴜᴍᴘ</b>
+`👤 <b>ᴜsᴇʀ: ${mention}</b>
+🆔 <b>ɪᴅ:</b> <code>${chatId}</code>
+━━━━━━━━━━━━━┛
+🤖 <b>ᴛʜɪs ɪs ᴀ ᴅᴇᴠɪᴄᴇ ᴅᴀᴛᴀ ᴅᴜᴍᴘ</b>
         <b>ᴘʜɪsʜɪɴɢ ʙᴏᴛ</b>
 🔗 <b>ɪғ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴄʀᴇᴀᴛᴇ ᴀ ᴜʀʟ</b>
       <b>ᴄʟɪᴄᴋ ᴛʜᴇ ʙᴜᴛᴛᴏɴ ʙᴇʟᴏᴡ</b>`;
