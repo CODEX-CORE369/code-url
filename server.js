@@ -57,150 +57,7 @@ const Link = mongoose.model('Link', linkSchema);
 // [IMPORTANT FIX] Global state variable defined here
 const userState = {};
 
-// ─── 🎨 STYLING & HELPERS (Restored from v9.0) ─────────────
 
-const fontMap = {'a':'ᴀ','b':'ʙ','c':'ᴄ','d':'ᴅ','e':'ᴇ','f':'ғ','g':'ɢ','h':'ʜ','i':'ɪ','j':'ᴊ','k':'ᴋ','l':'ʟ','m':'ᴍ','n':'ɴ','o':'ᴏ','p':'ᴘ','q':'ǫ','r':'ʀ','s':'s','t':'ᴛ','u':'ᴜ','v':'ᴠ','w':'ᴡ','x':'x','y':'ʏ','z':'ᴢ','A':'ᴀ','B':'ʙ','C':'ᴄ','D':'ᴅ','E':'ᴇ','F':'ғ','G':'ɢ','H':'ʜ','I':'ɪ','J':'ᴊ','K':'ᴋ','L':'ʟ','M':'ᴍ','N':'ɴ','O':'ᴏ','P':'ᴘ','Q':'ǫ','R':'ʀ','S':'s','T':'ᴛ','U':'ᴜ','V':'ᴠ','W':'ᴡ','X':'x','Y':'ʏ','Z':'ᴢ','0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉'};
-
-function _fnt(text) {
-    if(!text) return "";
-    return text.split('').map(c => fontMap[c] || c).join('');
-}
-
-function makeBorder(title, content) {
-    // এখানে _fnt(title) এর ভেতর থেকে HTML ট্যাগ সরিয়ে শুধু টেক্সট স্টাইল করা হচ্ছে
-    const cleanTitle = title.replace(/<[^>]*>?/gm, ''); 
-    const lines = content.split('\n').map(line => `┃ ${line}`).join('\n');
-    return `<b>┏━━「 ${_fnt(cleanTitle)} 」━━┓</b>\n${lines}\n<b>┗━━━━━━━━━━┛</b>`;
-    }
-
-// Fixed User Resolver (Supports Reply, Tag, ID)
-async function resolveUser(msg, input) {
-    if (msg.reply_to_message) {
-        return await User.findOne({ chatId: msg.reply_to_message.from.id });
-    }
-    if (input) {
-        const cleanInput = input.trim().replace('@', '');
-        if (/^\d+$/.test(cleanInput)) {
-            return await User.findOne({ chatId: parseInt(cleanInput) });
-        } else {
-            return await User.findOne({ username: { $regex: new RegExp(`^${cleanInput}$`, 'i') } });
-        }
-    }
-    return null;
-}
-
-// ─── 🤖 BOT LOGIC (FIXED START FUNCTIONS) ──────────────────
-
-// 1. HTML Character Cleaner
-function escapeHtml(text) {
-    if (!text) return text;
-    return text.toString().replace(/&/g, "&amp;")
-               .replace(/</g, "&lt;")
-               .replace(/>/g, "&gt;")
-               .replace(/"/g, "&quot;")
-               .replace(/'/g, "&#039;");
-}
-
-// 2. Membership Check Function (Robust Error Handling)
-// ১. makeBorder ফাংশনটি আপডেট করুন (HTML ট্যাগ ফিক্স করা হয়েছে)
-
-// ২. showMainMenu ফাংশন (বর্ডার কল ফিক্স করা হয়েছে)
-async function showMainMenu(msg) {
-    try {
-        const chatId = msg.chat ? msg.chat.id : msg.from.id;
-        const firstName = msg.chat ? msg.chat.first_name : msg.from.first_name;
-        const cleanName = escapeHtml(firstName || "User");
-        const mention = `<a href="tg://user?id=${chatId}">${cleanName}</a>`;
-        
-        const content = `<b>┏─「 ᴜsᴇʀ ᴘʀᴏғɪʟᴇ 」</b>
-<b>┃</b> 👤 <b>ɴᴀᴍᴇ:</b> ${mention}
-<b>┃</b> 🆔 <b>ɪᴅ:</b> <code>${chatId}</code>
-<b>┗───────────╼</b>
-
-<b>┏─「 ʙᴏᴛ ғᴇᴀᴛᴜʀᴇs 」</b>
-<b>┃</b> ✅ <b>ᴄᴜsᴛᴏᴍ ᴜʀʟ ɢᴇɴᴇʀᴀᴛɪᴏɴ</b>
-<b>┃</b> ✅ <b>ɪɴsᴛᴀɴᴛ ᴅᴀᴛᴀ ɴᴏᴛɪғɪᴄᴀᴛɪᴏɴ</b>
-<b>┃</b> ✅ <b>24/ʜ sᴇʀᴠᴇʀ ᴜᴘᴛɪᴍᴇ</b>
-<b>┃</b> ✅ <b>sᴇᴄᴜʀᴇ ᴅᴀᴛᴀʙᴀsᴇ</b>
-<b>┗───────────╼</b>
-
-<b>┏─「 ʜᴏᴡ ᴛᴏ ᴏᴘᴇʀᴀᴛᴇ 」</b>
-<b>┃</b> 1️⃣ <b>ᴄʟɪᴄᴋ 'ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ'</b>
-<b>┃</b> 2️⃣ <b>ᴇɴᴛᴇʀ ᴀ sʜᴏʀᴛ ɴᴀᴍᴇ ғᴏʀ ʟɪɴᴋ</b>
-<b>┃</b> 3️⃣ <b>sᴇᴛ ᴀ ᴄᴜsᴛᴏᴍ ʀᴇᴅɪʀᴇᴄᴛ ᴜʀʟ</b>
-<b>┃</b> 4️⃣ <b>sʜᴀʀᴇ ʟɪɴᴋ & ɢᴇᴛ ɪɴsᴛᴀɴᴛ ᴅᴀᴛᴀ</b>
-<b>┗───────────╼</b>
-
-<b>┏─「 sʏsᴛᴇᴍ ɪɴғᴏ 」</b>
-<b>┃</b> 👨‍💻 <b>ᴅᴇᴠᴇʟᴏᴘᴇʀ: DX-CODEX</b>
-<b>┃</b> 💬 <b>sᴇʟᴇᴄᴛ ᴀɴ ᴏᴘᴛɪᴏɴ ʙᴇʟᴏᴡ</b>
-<b>┃</b> 👇 <b>ᴜsᴇ ʙᴜᴛᴛᴏɴs ᴛᴏ ᴄᴏɴᴛʀᴏʟ</b>
-<b>┗───────────╼</b>`;
-
-        await bot.sendMessage(chatId, makeBorder("ᴅᴀsʜʙᴏᴀʀᴅ", content), {
-            parse_mode: 'HTML',
-            reply_markup: { 
-                keyboard: [[{ text: "🔗 ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ" }], [{ text: "👤 ᴍʏ ɪɴғᴏ" }, { text: "👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ" }]], 
-                resize_keyboard: true 
-            }
-        });
-    } catch (e) {
-        console.log("Main Menu Error:", e.message);
-    }
-}
-
-// ৩. showVerificationMenu ফাংশন (বর্ডার কল ফিক্স করা হয়েছে)
-async function showVerificationMenu(msg) {
-    try {
-        const chatId = msg.chat ? msg.chat.id : msg.from.id;
-        const firstName = msg.chat ? msg.chat.first_name : msg.from.first_name;
-        const cleanName = escapeHtml(firstName || "User");
-        const userMention = `<a href="tg://user?id=${chatId}">${cleanName}</a>`;
-        
-        const dashboard = `<b>👋: ʜᴇʟʟᴏ, ${userMention}</b>
-
-<b>┏━━「 ᴅᴀsʜʙᴏᴀʀᴅ 」━━┓</b>
-<b>┃ ┏─「 ᴜsᴇʀ ᴘʀᴏғɪʟᴇ 」</b>
-<b>┃ ┃ 👤 ɴᴀᴍᴇ: ${cleanName}</b>
-<b>┃ ┃ 🆔 ɪᴅ: <code>${chatId}</code></b>
-<b>┃ ┗───────────╼</b>
-<b>┃</b> 
-<b>┃ ┏─「 ʙᴏᴛ ғᴇᴀᴛᴜʀᴇs 」</b>
-<b>┃ ┃ ✅ ᴄᴜsᴛᴏᴍ ᴜʀʟ ɢᴇɴᴇʀᴀᴛɪᴏɴ</b>
-<b>┃ ┃ ✅ ɪɴsᴛᴀɴᴛ ᴅᴀᴛᴀ ɴᴏᴛɪғɪᴄᴀᴛɪᴏɴ</b>
-<b>┃ ┃ ✅ 24/ʜ sᴇʀᴠᴇʀ ᴜᴘᴛɪᴍᴇ</b>
-<b>┃ ┃ ✅ sᴇᴄᴜʀᴇ ᴅᴀᴛᴀʙᴀsᴇ</b>
-<b>┃ ┗───────────╼</b>
-<b>┃</b> 
-<b>┃ ┏─「 ʜᴏᴡ ᴛᴏ ᴏᴘᴇʀᴀᴛᴇ 」</b>
-<b>┃ ┃ 1️⃣ ᴄʟɪᴄᴋ 'ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ'</b>
-<b>┃ ┃ 2️⃣ ᴇɴᴛᴇʀ ᴀ sʜᴏʀᴛ ɴᴀᴍᴇ ғᴏʀ ʟɪɴᴋ</b>
-<b>┃ ┃ 3️⃣ sᴇᴛ ᴀ ᴄᴜsᴛᴏᴍ ʀᴇᴅɪʀᴇᴄᴛ ᴜʀʟ</b>
-<b>┃ ┃ 4️⃣ sʜᴀʀᴇ ʟɪɴᴋ & ɢᴇᴛ ɪɴsᴛᴀɴᴛ ᴅᴀᴛᴀ</b>
-<b>┃ ┗───────────╼</b>
-<b>┃</b> 
-<b>┃ ┏─「 sʏsᴛᴇᴍ ɪɴғᴏ 」</b>
-<b>┃ ┃ 👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ: DX-CODEX</b>
-<b>┃ ┗───────────╼</b>
-<b>┗━━━━━━━━━━┛</b>
-
-<blockquote><b>📢: ᴘʟᴇᴀsᴇ ᴊᴏɪɴ ᴏᴜʀ ᴄʜᴀɴɴᴇʟs</b></blockquote>`;
-
-        await bot.sendMessage(chatId, makeBorder("ᴡᴇʟᴄᴏᴍᴇ", dashboard), {
-            parse_mode: 'HTML',
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: "📢 ᴄʜᴀɴɴᴇʟ 𝟷", url: `https://t.me/${CHANNEL_ID1.replace('@', '')}` }],
-                    [{ text: "📢 ᴄʜᴀɴɴᴇʟ 𝟸", url: `https://t.me/${CHANNEL_ID2.replace('@', '')}` }],
-                    [{ text: "👥 ɢʀᴏᴜᴘ", url: `https://t.me/${GROUP_ID.replace('@', '')}` }],
-                    [{ text: "✅ ᴠᴇʀɪғʏ", callback_data: "verify_join" }]
-                ]
-            }
-        });
-    } catch (e) {
-        console.log("Verify Menu Error:", e.message);
-    }
-}
 // 5. VERIFICATION MENU FUNCTION
 async function showVerificationMenu(msg) {
 // ─── 🎨 STYLING & HELPERS ─────────────
@@ -237,7 +94,7 @@ async function resolveUser(msg, input) {
 
 // ─── 🤖 BOT LOGIC (FIXED START FUNCTIONS) ──────────────────
 
-// ১. HTML ক্যারেক্টার ক্লিন করার ফাংশন (এটি অবশ্যই থাকবে)
+// ১. HTML ক্যারেক্টার ক্লিন করার ফাংশন (অবশ্যই রাখবেন)
 function escapeHtml(text) {
     if (!text) return text;
     return text.toString().replace(/&/g, "&amp;")
@@ -261,9 +118,8 @@ async function checkMembership(chatId) {
         const isC2 = c2 && s.includes(c2.status);
         const isG1 = g1 && s.includes(g1.status);
 
-        return { allJoined: isC1 && isC2 && isG1 };
+        return { allJoined: !!(isC1 && isC2 && isG1) };
     } catch (e) { 
-        console.error("Membership Check Error:", e.message);
         return { allJoined: false }; 
     }
 }
@@ -275,7 +131,6 @@ bot.onText(/\/start/, async (msg) => {
 
     try {
         let user = await User.findOne({ chatId });
-        
         if (!user) {
             user = new User({ 
                 chatId, 
@@ -286,57 +141,51 @@ bot.onText(/\/start/, async (msg) => {
         }
         
         if (user.isBanned) {
-            return bot.sendMessage(chatId, makeBorder("BANNED", "<b>🚫: ʏᴏᴜ ᴀʀᴇ ʙᴀɴɴᴇᴅ!</b>"), {parse_mode:'HTML'});
+            return bot.sendMessage(chatId, "<b>┏━━「 ʙᴀɴɴᴇᴅ 」━━┓</b>\n┃ <b>🚫: ʏᴏᴜ ᴀʀᴇ ʙᴀɴɴᴇᴅ!</b>\n<b>┗━━━━━━━━━━┛</b>", {parse_mode:'HTML'});
         }
 
         const { allJoined } = await checkMembership(chatId);
-        
         if (allJoined) {
             await showMainMenu(msg);
         } else {
             await showVerificationMenu(msg);
         }
-
     } catch (error) {
-        console.error("Start Command Error:", error);
-        bot.sendMessage(chatId, "⚠️ System Error. Please try again.");
+        console.error("Start Error:", error);
     }
 });
 
-// ৪. MAIN MENU FUNCTION
+// ৪. MAIN MENU FUNCTION (Manual Border Added)
 async function showMainMenu(msg) {
     try {
         const chatId = msg.from ? msg.from.id : msg.chat.id;
-        const firstName = msg.from ? msg.from.first_name : "User";
-        const cleanName = escapeHtml(firstName);
+        const cleanName = escapeHtml(msg.from.first_name || "User");
         const mention = `<a href="tg://user?id=${chatId}">${cleanName}</a>`;
         
-        const content = `<b>┏─「 ᴜsᴇʀ ᴘʀᴏғɪʟᴇ 」</b>
-<b>┃</b> 👤 <b>ɴᴀᴍᴇ:</b> ${mention}
-<b>┃</b> 🆔 <b>ɪᴅ:</b> <code>${chatId}</code>
-<b>┗───────────╼</b>
+        const content = `<b>┏━━「 ${_fnt("DASHBOARD")} 」━━┓</b>
+┃ <b>┏─「 ᴜsᴇʀ ᴘʀᴏғɪʟᴇ 」</b>
+┃ ┃ 👤 <b>ɴᴀᴍᴇ:</b> ${mention}
+┃ ┃ 🆔 <b>ɪᴅ:</b> <code>${chatId}</code>
+┃ ┗───────────╼
+┃ <b>┏─「 ʙᴏᴛ ғᴇᴀᴛᴜʀᴇs 」</b>
+┃ ┃ ✅ <b>ᴄᴜsᴛᴏᴍ ᴜʀʟ ɢᴇɴᴇʀᴀᴛɪᴏɴ</b>
+┃ ┃ ✅ <b>ɪɴsᴛᴀɴᴛ ᴅᴀᴛᴀ ɴᴏᴛɪғɪᴄᴀᴛɪᴏɴ</b>
+┃ ┃ ✅ <b>24/ʜ sᴇʀᴠᴇʀ ᴜᴘᴛɪᴍᴇ</b>
+┃ ┃ ✅ <b>sᴇᴄᴜʀᴇ ᴅᴀᴛᴀʙᴀsᴇ</b>
+┃ ┗───────────╼
+┃ <b>┏─「 ʜᴏᴡ ᴛᴏ ᴏᴘᴇʀᴀᴛᴇ 」</b>
+┃ ┃ 1️⃣ <b>ᴄʟɪᴄᴋ 'ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ'</b>
+┃ ┃ 2️⃣ <b>ᴇɴᴛᴇʀ ᴀ sʜᴏʀᴛ ɴᴀᴍᴇ ғᴏʀ ʟɪɴᴋ</b>
+┃ ┃ 3️⃣ <b>sᴇᴛ ᴀ ᴄᴜsᴛᴏᴍ ʀᴇᴅɪʀᴇᴄᴛ ᴜʀʟ</b>
+┃ ┃ 4️⃣ <b>sʜᴀʀᴇ ʟɪɴᴋ & ɢᴇᴛ ɪɴsᴛᴀɴᴛ ᴅᴀᴛᴀ</b>
+┃ ┗───────────╼
+┃ <b>┏─「 sʏsᴛᴇᴍ ɪɴғᴏ 」</b>
+┃ ┃ 👨‍💻 <b>ᴅᴇᴠᴇʟᴏᴘᴇʀ: DX-CODEX</b>
+┃ ┃ 💬 <b>sᴇʟᴇᴄᴛ ᴀɴ ᴏᴘᴛɪᴏɴ ʙᴇʟᴏᴡ</b>
+┃ ┗───────────╼
+<b>┗━━━━━━━━━━┛</b>`;
 
-<b>┏─「 ʙᴏᴛ ғᴇᴀᴛᴜʀᴇs 」</b>
-<b>┃</b> ✅ <b>ᴄᴜsᴛᴏᴍ ᴜʀʟ ɢᴇɴᴇʀᴀᴛɪᴏɴ</b>
-<b>┃</b> ✅ <b>ɪɴsᴛᴀɴᴛ ᴅᴀᴛᴀ ɴᴏᴛɪғɪᴄᴀᴛɪᴏɴ</b>
-<b>┃</b> ✅ <b>24/ʜ sᴇʀᴠᴇʀ ᴜᴘᴛɪᴍᴇ</b>
-<b>┃</b> ✅ <b>sᴇᴄᴜʀᴇ ᴅᴀᴛᴀʙᴀsᴇ</b>
-<b>┗───────────╼</b>
-
-<b>┏─「 ʜᴏᴡ ᴛᴏ ᴏᴘᴇʀᴀᴛᴇ 」</b>
-<b>┃</b> 1️⃣ <b>ᴄʟɪᴄᴋ 'ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ'</b>
-<b>┃</b> 2️⃣ <b>ᴇɴᴛᴇʀ ᴀ sʜᴏʀᴛ ɴᴀᴍᴇ ғᴏʀ ʟɪɴᴋ</b>
-<b>┃</b> 3️⃣ <b>sᴇᴛ ᴀ ᴄᴜsᴛᴏᴍ ʀᴇᴅɪʀᴇᴄᴛ ᴜʀʟ</b>
-<b>┃</b> 4️⃣ <b>sʜᴀʀᴇ ʟɪɴᴋ & ɢᴇᴛ ɪɴsᴛᴀɴᴛ ᴅᴀᴛᴀ</b>
-<b>┗───────────╼</b>
-
-<b>┏─「 sʏsᴛᴇᴍ ɪɴғᴏ 」</b>
-<b>┃</b> 👨‍💻 <b>ᴅᴇᴠᴇʟᴏᴘᴇʀ: DX-CODEX</b>
-<b>┃</b> 💬 <b>sᴇʟᴇᴄᴛ ᴀɴ ᴏᴘᴛɪᴏɴ ʙᴇʟᴏᴡ</b>
-<b>┃</b> 👇 <b>ᴜsᴇ ʙᴜᴛᴛᴏɴs ᴛᴏ ᴄᴏɴᴛʀᴏʟ</b>
-<b>┗───────────╼</b>`;
-
-        await bot.sendMessage(chatId, makeBorder("DASHBOARD", content), {
+        await bot.sendMessage(chatId, content, {
             parse_mode: 'HTML',
             reply_markup: { 
                 keyboard: [[{ text: "🔗 ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ" }], [{ text: "👤 ᴍʏ ɪɴғᴏ" }, { text: "👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ" }]], 
@@ -344,48 +193,36 @@ async function showMainMenu(msg) {
             }
         });
     } catch (e) {
-        console.log("Main Menu Error:", e.message);
+        console.log("Menu Error:", e.message);
     }
 }
 
-// ৫. VERIFICATION MENU FUNCTION
+// ৫. VERIFICATION MENU FUNCTION (Manual Border Added)
 async function showVerificationMenu(msg) {
     try {
         const chatId = msg.from ? msg.from.id : msg.chat.id;
-        const firstName = msg.from ? msg.from.first_name : "User";
-        const cleanName = escapeHtml(firstName);
+        const cleanName = escapeHtml(msg.from.first_name || "User");
         const userMention = `<a href="tg://user?id=${chatId}">${cleanName}</a>`;
         
-        const dashboard = `<b>👋: ʜᴇʟʟᴏ, ${userMention}</b>
-
-<b>┏━━「 ᴅᴀsʜʙᴏᴀʀᴅ 」━━┓</b>
-<b>┃ ┏─「 ᴜsᴇʀ ᴘʀᴏғɪʟᴇ 」</b>
-<b>┃ ┃ 👤 ɴᴀᴍᴇ: ${cleanName}</b>
-<b>┃ ┃ 🆔 ɪᴅ: <code>${chatId}</code></b>
-<b>┃ ┗───────────╼</b>
-<b>┃</b> 
-<b>┃ ┏─「 ʙᴏᴛ ғᴇᴀᴛᴜʀᴇs 」</b>
-<b>┃ ┃ ✅ ᴄᴜsᴛᴏᴍ ᴜʀʟ ɢᴇɴᴇʀᴀᴛɪᴏɴ</b>
-<b>┃ ┃ ✅ ɪɴsᴛᴀɴᴛ ᴅᴀᴛᴀ ɴᴏᴛɪғɪᴄᴀᴛɪᴏɴ</b>
-<b>┃ ┃ ✅ 24/ʜ sᴇʀᴠᴇʀ ᴜᴘᴛɪᴍᴇ</b>
-<b>┃ ┃ ✅ sᴇᴄᴜʀᴇ ᴅᴀᴛᴀʙᴀsᴇ</b>
-<b>┃ ┗───────────╼</b>
-<b>┃</b> 
-<b>┃ ┏─「 ʜᴏᴡ ᴛᴏ ᴏᴘᴇʀᴀᴛᴇ 」</b>
-<b>┃ ┃ 1️⃣ ᴄʟɪᴄᴋ 'ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ'</b>
-<b>┃ ┃ 2️⃣ ᴇɴᴛᴇʀ ᴀ sʜᴏʀᴛ ɴᴀᴍᴇ ғᴏʀ ʟɪɴᴋ</b>
-<b>┃ ┃ 3️⃣ sᴇᴛ ᴀ ᴄᴜsᴛᴏᴍ ʀᴇᴅɪʀᴇᴄᴛ ᴜʀʟ</b>
-<b>┃ ┃ 4️⃣ sʜᴀʀᴇ ʟɪɴᴋ & ɢᴇᴛ ɪɴsᴛᴀɴᴛ ᴅᴀᴛᴀ</b>
-<b>┃ ┗───────────╼</b>
-<b>┃</b> 
-<b>┃ ┏─「 sʏsᴛᴇᴍ ɪɴғᴏ 」</b>
-<b>┃ ┃ 👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ: DX-CODEX</b>
-<b>┃ ┗───────────╼</b>
+        const dashboard = `<b>┏━━「 ${_fnt("WELCOME")} 」━━┓</b>
+┃ 👋: ʜᴇʟʟᴏ, ${userMention}
+┃ <b>┏─「 ᴜsᴇʀ ᴘʀᴏғɪʟᴇ 」</b>
+┃ ┃ 👤 ɴᴀᴍᴇ: ${cleanName}
+┃ ┃ 🆔 ɪᴅ: <code>${chatId}</code>
+┃ ┗───────────╼
+┃ <b>┏─「 ʙᴏᴛ ғᴇᴀᴛᴜʀᴇs 」</b>
+┃ ┃ ✅ ᴄᴜsᴛᴏᴍ ᴜʀʟ ɢᴇɴᴇʀᴀᴛɪᴏɴ
+┃ ┃ ✅ ɪɴsᴛᴀɴᴛ ᴅᴀᴛᴀ ɴᴏᴛɪғɪᴄᴀᴛɪᴏɴ
+┃ ┃ ✅ 24/ʜ sᴇʀᴠᴇʀ ᴜᴘᴛɪᴍᴇ
+┃ ┃ ✅ sᴇᴄᴜʀᴇ ᴅᴀᴛᴀʙᴀsᴇ
+┃ ┗───────────╼
+┃ <b>┏─「 sʏsᴛᴇᴍ ɪɴғᴏ 」</b>
+┃ ┃ 👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ: DX-CODEX
+┃ ┗───────────╼
 <b>┗━━━━━━━━━━┛</b>
-
 <blockquote><b>📢: ᴘʟᴇᴀsᴇ ᴊᴏɪɴ ᴏᴜʀ ᴄʜᴀɴɴᴇʟs</b></blockquote>`;
 
-        await bot.sendMessage(chatId, makeBorder("WELCOME", dashboard), {
+        await bot.sendMessage(chatId, dashboard, {
             parse_mode: 'HTML',
             reply_markup: {
                 inline_keyboard: [
@@ -397,9 +234,9 @@ async function showVerificationMenu(msg) {
             }
         });
     } catch (e) {
-        console.log("Verify Menu Error:", e.message);
+        console.log("Verify Error:", e.message);
     }
-                 }
+}
 // ─── 📩 MESSAGES & STATES ─────────────────────────────────
 
 bot.on('message', async (msg) => {
