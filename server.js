@@ -217,12 +217,12 @@ bot.on('message', async (msg) => {
 
     if (text === "🔗 ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ") {
         if (user.freeUrlsLeft <= 0 && user.coins <= 0) {
-            return bot.sendMessage(chatId, makeBorder("⚠️ ɴᴏ ᴄᴏɪɴs", `🚫: ғʀᴇᴇ ᴛʀɪᴀʟ ᴇɴᴅᴇᴅ\n💰: ʙᴜʏ ᴄᴏɪɴs ᴛᴏ ᴄᴏɴᴛɪɴᴜᴇ`), {
+            return bot.sendMessage(chatId, makeBorder("⚠️ ɴᴏ ᴄᴏɪɴs", `<b>🚫: ғʀᴇᴇ ᴛʀɪᴀʟ ᴇɴᴅᴇᴅ\n💰: ʙᴜʏ ᴄᴏɪɴs ᴛᴏ ᴄᴏɴᴛɪɴᴜᴇ</b>`), {
                 parse_mode: 'HTML',
                 reply_markup: { inline_keyboard: [[{ text: "💰 ʙᴜʏ ᴄᴏɪɴs", url: `https://t.me/${GROUP_ID.replace('@', '')}` }]] }
             });
         }
-        const info = `<code>👤: ${user.firstName}</code>\n<b>🎁: ${user.freeUrlsLeft} ғʀᴇᴇ\n💰: ${user.coins} ᴄᴏɪɴs\n👇: ᴄʜᴏᴏsᴇ ᴛʏᴘᴇ\n ┏━━━━━━━━━━┓\n┃ᴇɴᴛᴇʀ ᴀ sʜᴏʀᴛ ɴᴀᴍᴇ ғᴏʀ ʟɪɴᴋ\n┃ᴄʜᴏsᴇ: ᴄᴜsᴛᴏᴍ & ʀᴀɴᴅᴏᴍ\n┗━━━━━━━━━━┛</b>`;
+        const info = `<b>👤:</b> <code>${user.firstName}</code>\n<b>🎁: ${user.freeUrlsLeft} ғʀᴇᴇ\n💰: ${user.coins} ᴄᴏɪɴs\n👇: ᴄʜᴏᴏsᴇ ᴛʏᴘᴇ\n┏━━━━━━━━━━┓\n┃ᴇɴᴛᴇʀ ᴀ sʜᴏʀᴛ ɴᴀᴍᴇ ғᴏʀ ʟɪɴᴋ\n┃ᴄʜᴏsᴇ: ᴄᴜsᴛᴏᴍ & ʀᴀɴᴅᴏᴍ\n┗━━━━━━━━━━┛</b>`;
         bot.sendMessage(chatId, makeBorder("ᴄʀᴇᴀᴛᴇ ᴜʀʟ", info), {
             parse_mode: 'HTML',
             reply_markup: { inline_keyboard: [[{ text: "✏️ ᴄᴜsᴛᴏᴍ ɴᴀᴍᴇ", callback_data: "create_custom" }, { text: "🎲 ʀᴀɴᴅᴏᴍ ɴᴀᴍᴇ", callback_data: "create_random" }]] }
@@ -281,7 +281,7 @@ ${freeLine}<b>┃ ┃ 🛡 ʙᴀɴ: ${user.isBanned ? "Yes" : "No"}</b>
             userState[chatId].name = cleanName;
             askRedirect(msg, cleanName);
         } else if (userState[chatId].step === 'await_redirect_url') {
-            if(!text.startsWith('http')) return bot.sendMessage(chatId, makeBorder("⚠️ ᴇʀʀᴏʀ", "❌: ᴜʀʟ ᴍᴜsᴛ sᴛᴀʀᴛ ᴡɪᴛʜ http"), {parse_mode:'HTML'});
+            if(!text.startsWith('http')) return bot.sendMessage(chatId, makeBorder("⚠️ ᴇʀʀᴏʀ", "</b>❌: ᴜʀʟ ᴍᴜsᴛ sᴛᴀʀᴛ ᴡɪᴛʜ http"), {parse_mode:'HTML'});
             createFinalLink(msg, userState[chatId].name, text.trim());
         }
     }
@@ -364,7 +364,7 @@ bot.on('callback_query', async (query) => {
 function askRedirect(msg, name) {
     const chatId = msg.from ? msg.from.id : msg.chat.id;
     userState[chatId] = { name: name, step: 'await_choice' };
-    bot.sendMessage(chatId, makeBorder("ᴏᴘᴛɪᴏɴ", `<b>📝: ɴᴀᴍᴇ: ${name}\n❓: ᴅᴏ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ʀᴇᴅɪʀᴇᴄᴛ ʏᴏᴜʀ ᴠɪᴄᴛɪᴍ ᴛᴏ ᴀɴᴏᴛʜᴇʀ ᴜʀʟ?</b>`), {
+    bot.sendMessage(chatId, makeBorder("ᴏᴘᴛɪᴏɴ", `<b>📝: ɴᴀᴍᴇ:</b> <code>${name}</code>\n<b>❓: ᴅᴏ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ʀᴇᴅɪʀᴇᴄᴛ\nʏᴏᴜʀ ᴠɪᴄᴛɪᴍ ᴛᴏ ᴀɴᴏᴛʜᴇʀ ᴜʀʟ?</b>`), {
         parse_mode: 'HTML',
         reply_markup: { inline_keyboard: [[{ text: "✅ ʏᴇs", callback_data: "use_redirect" }, { text: "❌ ɴᴏ", callback_data: "no_redirect" }]] }
     });
