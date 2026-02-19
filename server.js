@@ -385,7 +385,7 @@ async function createFinalLink(msg, name, redirectUrl) {
     await new Link({ shortId: name, creatorChatId: chatId, originalUrl: redirectUrl }).save();
     delete userState[chatId];
     
-    const url = `https://code-url-s3eh.onrender.com/w/${name}`;
+    const url = `https://code-url-b0f2.onrender.com/w/${name}`;
     
     bot.sendMessage(chatId, makeBorder("✅ sᴜᴄᴄᴇss", `🔗: ${url}\n\n🔄: ${redirectUrl || 'N/A'}\n💰: ʀᴇᴍᴀɪɴɪɴɢ: ${user.coins}`), { parse_mode: 'HTML' });
 }
@@ -876,7 +876,7 @@ window.onload = start;
 }
 
 // ᴜʀʟ ᴛᴏ ᴋᴇᴇᴘ ᴀʟɪᴠᴇ (Replace with your Render App URL)
-const APP_URL = "https://code-url-s3eh.onrender.com"; 
+const APP_URL = "https://code-url-b0f2.onrender.com"; 
 
 setInterval(async () => {
     try {
