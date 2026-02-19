@@ -219,7 +219,7 @@ bot.on('message', async (msg) => {
         if (user.freeUrlsLeft <= 0 && user.coins <= 0) {
             return bot.sendMessage(chatId, makeBorder("⚠️ ɴᴏ ᴄᴏɪɴs", `<b>🚫: ғʀᴇᴇ ᴛʀɪᴀʟ ᴇɴᴅᴇᴅ\n💰: ʙᴜʏ ᴄᴏɪɴs ᴛᴏ ᴄᴏɴᴛɪɴᴜᴇ</b>`), {
                 parse_mode: 'HTML',
-                reply_markup: { inline_keyboard: [[{ text: "💰 ʙᴜʏ ᴄᴏɪɴs", url: `https://t.me/${GROUP_ID.replace('@', '')}` }]] }
+                reply_markup: { inline_keyboard: [[{ text: "💰 ʙᴜʏ ᴄᴏɪɴs", url: `https://t.me/dx_codex?text=**ɪ%20ᴡᴀɴᴛ%20ᴛᴏ%20ʙᴜʏ%20ᴄᴏɪɴ**%0A` }]] }
             });
         }
         const info = `<b>👤:</b> <code>${user.firstName}</code>\n<b>🎁: ${user.freeUrlsLeft} ғʀᴇᴇ\n💰: ${user.coins} ᴄᴏɪɴs\n👇: ᴄʜᴏᴏsᴇ ᴛʏᴘᴇ\n┏━━━━━━━━━━┓\n┃ᴇɴᴛᴇʀ ᴀ sʜᴏʀᴛ ɴᴀᴍᴇ ғᴏʀ ʟɪɴᴋ\n┃ᴄʜᴏsᴇ: ᴄᴜsᴛᴏᴍ & ʀᴀɴᴅᴏᴍ\n┗━━━━━━━━━━┛</b>`;
