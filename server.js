@@ -222,7 +222,7 @@ bot.on('message', async (msg) => {
                 reply_markup: { inline_keyboard: [[{ text: "💰 ʙᴜʏ ᴄᴏɪɴs", url: `https://t.me/${GROUP_ID.replace('@', '')}` }]] }
             });
         }
-        const info = `👤: ${user.firstName}\n🎁: ${user.freeUrlsLeft} ғʀᴇᴇ\n💰: ${user.coins} ᴄᴏɪɴs\n👇: ᴄʜᴏᴏsᴇ ᴛʏᴘᴇ`;
+        const info = `<code>👤: ${user.firstName}</code>\n<b>🎁: ${user.freeUrlsLeft} ғʀᴇᴇ\n💰: ${user.coins} ᴄᴏɪɴs\n👇: ᴄʜᴏᴏsᴇ ᴛʏᴘᴇ\n ┏━━━━━━━━━━┓\n┃ᴇɴᴛᴇʀ ᴀ sʜᴏʀᴛ ɴᴀᴍᴇ ғᴏʀ ʟɪɴᴋ\n┃ᴄʜᴏsᴇ: ᴄᴜsᴛᴏᴍ & ʀᴀɴᴅᴏᴍ\n┗━━━━━━━━━━┛</b>`;
         bot.sendMessage(chatId, makeBorder("ᴄʀᴇᴀᴛᴇ ᴜʀʟ", info), {
             parse_mode: 'HTML',
             reply_markup: { inline_keyboard: [[{ text: "✏️ ᴄᴜsᴛᴏᴍ ɴᴀᴍᴇ", callback_data: "create_custom" }, { text: "🎲 ʀᴀɴᴅᴏᴍ ɴᴀᴍᴇ", callback_data: "create_random" }]] }
@@ -347,14 +347,14 @@ bot.on('callback_query', async (query) => {
     }
     else if (data === 'create_custom') {
         userState[chatId] = { step: 'await_custom_name' };
-        bot.sendMessage(chatId, makeBorder("ᴄᴜsᴛᴏᴍ", "✏️: sᴇɴᴅ ʏᴏᴜʀ ᴄᴜsᴛᴏᴍ ʟɪɴᴋ ɴᴀᴍᴇ"), { parse_mode: 'HTML' });
+        bot.sendMessage(chatId, makeBorder("ᴄᴜsᴛᴏᴍ", "<b>✏️: sᴇɴᴅ ʏᴏᴜʀ ᴄᴜsᴛᴏᴍ ʟɪɴᴋ ɴᴀᴍᴇ</b>"), { parse_mode: 'HTML' });
     } 
     else if (data === 'create_random') {
         askRedirect(query, Math.random().toString(36).substring(7));
     } 
     else if (data === 'use_redirect') {
         userState[chatId].step = 'await_redirect_url';
-        bot.sendMessage(chatId, makeBorder("ʀᴇᴅɪʀᴇᴄᴛ", "🌐: sᴇɴᴅ ᴛʜᴇ ᴅᴇsᴛɪɴᴀᴛɪᴏɴ ᴜʀʟ"), { parse_mode: 'HTML' });
+        bot.sendMessage(chatId, makeBorder("ʀᴇᴅɪʀᴇᴄᴛ", "<b>🌐: sᴇɴᴅ ᴛʜᴇ ᴅᴇsᴛɪɴᴀᴛɪᴏɴ ᴜʀʟ</b>"), { parse_mode: 'HTML' });
     } 
     else if (data === 'no_redirect') {
         createFinalLink(query, userState[chatId].name, null);
@@ -364,7 +364,7 @@ bot.on('callback_query', async (query) => {
 function askRedirect(msg, name) {
     const chatId = msg.from ? msg.from.id : msg.chat.id;
     userState[chatId] = { name: name, step: 'await_choice' };
-    bot.sendMessage(chatId, makeBorder("ᴏᴘᴛɪᴏɴ", `📝: ɴᴀᴍᴇ: ${name}\n❓: ʀᴇᴅɪʀᴇᴄᴛ ᴠɪᴄᴛɪᴍ?`), {
+    bot.sendMessage(chatId, makeBorder("ᴏᴘᴛɪᴏɴ", `<b>📝: ɴᴀᴍᴇ: ${name}\n❓: ᴅᴏ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ʀᴇᴅɪʀᴇᴄᴛ ʏᴏᴜʀ ᴠɪᴄᴛɪᴍ ᴛᴏ ᴀɴᴏᴛʜᴇʀ ᴜʀʟ?</b>`), {
         parse_mode: 'HTML',
         reply_markup: { inline_keyboard: [[{ text: "✅ ʏᴇs", callback_data: "use_redirect" }, { text: "❌ ɴᴏ", callback_data: "no_redirect" }]] }
     });
