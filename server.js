@@ -240,7 +240,7 @@ bot.on('message', async (msg) => {
         const titleMain = _fnt("YOUR INFO");
         const titleProf = _fnt("USER PROFILE");
         const titleDet = _fnt("PROFILE DETAILS"); 
-        const btnText = _fnt("SUPPORT GROUP");
+        const btnText = _fnt("ʙᴜʏ ᴄᴏɪɴ");
 
         const infoMsg = 
 `<b>┏━━「 ${titleMain} 」━━┓</b>
@@ -261,7 +261,7 @@ ${freeLine}<b>┃ ┃ 🛡 ʙᴀɴ: ${user.isBanned ? "Yes" : "No"}</b>
             parse_mode: 'HTML',
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: `📢 ${btnText}`, url: `https://t.me/${GROUP_ID.replace('@', '')}` }]
+                    [{ text: `📢 ${btnText}`, url: `https://t.me/dx_codex?text=**ɪ%20ᴡᴀɴᴛ%20ᴛᴏ%20ʙᴜʏ%20ᴄᴏɪɴ**%0A` }]
                 ]
             }
         });
