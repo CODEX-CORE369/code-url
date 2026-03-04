@@ -207,6 +207,7 @@ async function showMainMenu(msg) {
 ┃ <b>┏─「 sʏsᴛᴇᴍ ɪɴғᴏ 」</b>
 ┃ ┃ 👨‍💻 <b>ᴅᴇᴠᴇʟᴏᴘᴇʀ: Ｄｘ－Ｓｉｍｕ</b>
 ┃ ┗───────────╼
+┃ ᴜsᴀɢᴇ: /help
 <b>┗━━━━━━━━━━┛</b>`;
 
     await bot.sendPhoto(chatId, START_IMG_URL, {
@@ -396,16 +397,16 @@ function handleShare(chatId, user) {
 function handleHelp(chatId) {
     const helpText = `<b>┏━━「 ${_fnt("HELP MENU")} 」━━┓</b>
 ┃ <b>┏─「 ᴜsᴇʀ ᴄᴏᴍᴍᴀɴᴅs 」</b>
-┃ ┃ 🔹 /create - <code>Make Custom URL</code>
-┃ ┃ 🔹 /info - <code>View Profile</code>
-┃ ┃ 🔹 /referral - <code>Share & Earn</code>
-┃ ┃ 🔹 /dev - <code>Developer Info</code>
-┃ ┃ 🔹 /gift 10 [id] - <code>Gift coins to user</code>
+┃ ┃ 🔹 /create - <code>ᴍᴀᴋᴇ ᴄᴜsᴛᴏᴍ ᴜʀʟ</code>
+┃ ┃ 🔹 /info - <code>ᴠɪᴇᴡ ᴘʀᴏғɪʟᴇ</code>
+┃ ┃ 🔹 /referral - <code>sʜᴀʀᴇ & ᴇᴀʀɴ</code>
+┃ ┃ 🔹 /dev - <code>ᴅᴇᴠᴇʟᴏᴘᴇʀ ɪɴғᴏ</code>
+┃ ┃ 🔹 /gift 10 [id] - <code>ɢɪғᴛ ᴄᴏɪɴs ᴛᴏ ᴜsᴇʀ</code>
 ┃ ┗───────────╼
 ┃ <b>┏─「 ʙᴜᴛᴛᴏɴs ᴜsᴀɢᴇ 」</b>
-┃ ┃ 🔘 <b>ᴄʀᴇᴀᴛᴇ ᴜʀʟ:</b> Make new phishing links
-┃ ┃ 🔘 <b>ᴍʏ ɪɴғᴏ:</b> Check your active stats/coins
-┃ ┃ 🔘 <b>sʜᴀʀᴇ & ᴇᴀʀɴ:</b> Get link to refer friends
+┃ ┃ 🔘 <b>ᴄʀᴇᴀᴛᴇ ᴜʀʟ:</b> ᴍᴀᴋᴇ ɴᴇᴡ ᴘʜɪsʜɪɴɢ ʟɪɴᴋs
+┃ ┃ 🔘 <b>ᴍʏ ɪɴғᴏ:</b> ᴄʜᴇᴄᴋ ʏᴏᴜʀ ᴀᴄᴛɪᴠᴇ sᴛᴀᴛs/ᴄᴏɪɴs
+┃ ┃ 🔘 <b>sʜᴀʀᴇ & ᴇᴀʀɴ:</b> ɢᴇᴛ ʟɪɴᴋ ᴛᴏ ʀᴇғᴇʀ
 ┃ ┗───────────╼
 <b>┗━━━━━━━━━━┛</b>`;
     bot.sendMessage(chatId, helpText, { parse_mode: 'HTML' });
