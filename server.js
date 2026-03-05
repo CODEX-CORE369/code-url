@@ -84,8 +84,13 @@ function makeBorder(title, content) {
 
 function escapeHtml(text) {
     if (!text) return text;
-    return text.toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
+    return text.toString()
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
 
 async function resolveUser(msg, input) {
     if (msg.reply_to_message) return await User.findOne({ chatId: msg.reply_to_message.from.id });
@@ -175,6 +180,15 @@ bot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
 
         const { allJoined } = await checkMembership(chatId);
         if (allJoined) {
+            // Handle Deep Link Commands
+            if (match[1] && isNaN(match[1])) {
+                const cmd = match[1].toLowerCase();
+                if (cmd === 'help') return handleHelp(chatId);
+                if (cmd === 'create') return handleCreateUrl(chatId, user);
+                if (cmd === 'info') return handleInfo(chatId, user);
+                if (cmd === 'dev') return handleDev(chatId);
+                if (cmd === 'referral') return handleShare(chatId, user);
+            }
             await showMainMenu(msg);
         } else {
             await showVerificationMenu(msg);
@@ -217,7 +231,7 @@ async function showMainMenu(msg) {
             keyboard: [
                 [{ text: "🔗 ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ" }], 
                 [{ text: "👤 ᴍʏ ɪɴғᴏ" }, { text: "👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ" }],
-                [{ text: "🤝 sʜᴀʀᴇ & ᴇᴀʀɴ" }]
+                [{ text: "🤝 sʜᴀʀᴇ & ᴇᴀʀɴ" }, { text: "🛠 ᴍᴇɴᴜ" }]
             ], 
             resize_keyboard: true 
         }
@@ -266,7 +280,25 @@ bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const text = msg.text;
 
-    if (text && (text.startsWith('/add') || text.startsWith('/rem') || text.startsWith('/rm') || text.startsWith('/reset') || text.startsWith('/ban') || text.startsWith('/unban') || text.startsWith('/users') || text.startsWith('/share') || text.startsWith('/sudo') || text.startsWith('/gift'))) return;
+    // Group Security & Redirection logic
+    const adminCmds = ['/add', '/rem', '/rm', '/reset', '/ban', '/unban', '/users', '/share', '/sudo', '/ulist', '/ulink', '/rmlink', '/menu', '/data', '/broadcast', '/ref'];
+    if (msg.chat.type !== 'private') {
+        if (text && text.startsWith('/')) {
+            const cmdPrefix = text.split(' ')[0].toLowerCase();
+            if (!adminCmds.includes(cmdPrefix)) {
+                const safeCmd = cmdPrefix.replace('/', '');
+                bot.sendMessage(chatId, `<b>⚠️ ${_fnt("PLEASE USE COMMANDS IN PRIVATE CHAT")}</b>\n<b>┃ 🤖: ᴄʟɪᴄᴋ ʙᴇʟᴏᴡ ᴛᴏ ᴜsᴇ ɪɴ ᴅᴍ</b>`, {
+                    parse_mode: 'HTML',
+                    reply_markup: {
+                        inline_keyboard: [[{ text: "🤖 ɢᴏ ᴛᴏ ʙᴏᴛ ᴅᴍ", url: `https://t.me/${botUsername}?start=${safeCmd}` }]]
+                    }
+                });
+            }
+        }
+        return; // Ignore all other messages in group
+    }
+
+    if (text && (text.startsWith('/add') || text.startsWith('/rem') || text.startsWith('/rm') || text.startsWith('/reset') || text.startsWith('/ban') || text.startsWith('/unban') || text.startsWith('/users') || text.startsWith('/share') || text.startsWith('/sudo') || text.startsWith('/gift') || text.startsWith('/ref'))) return;
     if ((msg.caption && msg.caption.startsWith('/broadcast')) || (text && text.startsWith('/broadcast'))) return handleBroadcast(msg);
 
     if (!text) return;
@@ -288,6 +320,9 @@ bot.on('message', async (msg) => {
     }
     else if (text === "/help") {
         handleHelp(chatId);
+    }
+    else if (text === "🛠 ᴍᴇɴᴜ") {
+        handleUserMenu(chatId);
     }
     
     // Custom Link Steps
@@ -333,6 +368,19 @@ async function handleCreateUrl(chatId, user) {
     });
 }
 
+function handleUserMenu(chatId) {
+    const menuTxt = `<b>┏━━「 ${_fnt("BOT COMMANDS")} 」━━┓</b>\n┃ <b>👇 sᴇʟᴇᴄᴛ ᴀ ᴄᴏᴍᴍᴀɴᴅ ʙᴇʟᴏᴡ:</b>\n<b>┗━━━━━━━━━━┛</b>`;
+    bot.sendMessage(chatId, menuTxt, {
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: "👤 ᴍʏ ɪɴғᴏ", callback_data: "cmd_info" }, { text: "👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ", callback_data: "cmd_dev" }],
+                [{ text: "🤝 sʜᴀʀᴇ & ᴇᴀʀɴ", callback_data: "cmd_referral" }]
+            ]
+        }
+    });
+}
+
 async function handleInfo(chatId, user) {
     const activeLinkCount = await Link.countDocuments({ creatorChatId: chatId });
     const joinDate = user.joinedAt ? new Date(user.joinedAt).toLocaleDateString() : "N/A";
@@ -354,7 +402,7 @@ async function handleInfo(chatId, user) {
 <b>┃ ┏─「 ${_fnt("PROFILE DETAILS")} 」</b>
 ${subData}<b>┃ ┃ 🛡 ʙᴀɴ: ${user.isBanned ? "Yes" : "No"}</b>
 <b>┃ ┃ 📅 ᴅᴀᴛᴇ: ${joinDate}</b>
-<b>┃ ┃ 🔗 ʟɪɴᴋs: ${activeLinkCount}</b>
+<b>┃ ┃ 🔗 ʟɪɴks: ${activeLinkCount}</b>
 <b>┃ ┗───────────╼</b>
 <b>┗━━━━━━━━━━┛</b>`;
 
@@ -418,6 +466,21 @@ bot.on('callback_query', async (query) => {
     const data = query.data;
     const msg = query.message;
 
+    if (data === 'cmd_info') {
+        const user = await User.findOne({ chatId });
+        handleInfo(chatId, user);
+        return bot.answerCallbackQuery(query.id);
+    } 
+    else if (data === 'cmd_dev') {
+        handleDev(chatId);
+        return bot.answerCallbackQuery(query.id);
+    } 
+    else if (data === 'cmd_referral') {
+        const user = await User.findOne({ chatId });
+        handleShare(chatId, user);
+        return bot.answerCallbackQuery(query.id);
+    }
+
     if (data === 'verify_join') {
         try {
             const { allJoined } = await checkMembership(chatId);
@@ -456,7 +519,7 @@ bot.on('callback_query', async (query) => {
                         keyboard: [
                             [{ text: "🔗 ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ" }],
                             [{ text: "👤 ᴍʏ ɪɴғᴏ" }, { text: "👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ" }],
-                            [{ text: "🤝 sʜᴀʀᴇ & ᴇᴀʀɴ" }]
+                            [{ text: "🤝 sʜᴀʀᴇ & ᴇᴀʀɴ" }, { text: "🛠 ᴍᴇɴᴜ" }]
                         ],
                         resize_keyboard: true
                     }
@@ -519,6 +582,7 @@ async function createFinalLink(msg, name, redirectUrl) {
 // ─── 🎁 USER GIFT SYSTEM ───────────
 
 bot.onText(/\/gift\s+(\d+)\s+(.+)/, async (msg, match) => {
+    if (msg.chat.type !== 'private') return;
     const amount = parseInt(match[1]);
     const inputTarget = match[2];
     
@@ -542,6 +606,7 @@ bot.onText(/\/gift\s+(\d+)\s+(.+)/, async (msg, match) => {
 });
 
 bot.onText(/\/gift$/, (msg) => {
+    if (msg.chat.type !== 'private') return;
     bot.sendMessage(msg.chat.id, makeBorder("💡 ʜᴏᴡ ᴛᴏ ᴜsᴇ", "✍️ <b>Usage:</b>\n<code>/gift [amount] [userID/Username]</code>\n\nExample: <code>/gift 10 123456789</code>"), {parse_mode:'HTML'});
 });
 
@@ -723,7 +788,7 @@ bot.onText(/\/ulink(?:\s+(\d+))?/, async (msg, match) => {
 });
 
 bot.on('callback_query', async (query) => {
-    if (!(await checkAdmin(query.from.id))) return bot.answerCallbackQuery(query.id, { text: "🚫 Access Denied" });
+    if (!(await checkAdmin(query.from.id))) return;
 
     const [action, type, uid] = query.data.split('_');
 
@@ -795,6 +860,10 @@ bot.onText(/\/menu/, async (msg) => {
     menu += `├ <code>/share on|off</code> - ᴛᴏɢɢʟᴇ ʀᴇғᴇʀʀᴀʟ\n`;
     menu += `├ <code>/ban</code> [ɪᴅ/ʀᴇᴘʟʏ] - ʀᴇsᴛʀɪᴄᴛ ᴜsᴇʀ\n`;
     menu += `└ <code>/unban</code> [ɪᴅ/ʀᴇᴘʟʏ] - ʟɪғᴛ ʙᴀɴ\n\n`;
+
+    menu += `📢 <b>ʙʀᴏᴀᴅᴄᴀsᴛ sʏsᴛᴇᴍ</b>\n`;
+    menu += `├ <code>/broadcast</code> [text/media] - sᴇɴᴅ ᴍᴇssᴀɢᴇ\n`;
+    menu += `└ <code>/ref</code> [html text] - ʙʀᴏᴀᴅᴄᴀsᴛ ᴡɪᴛʜ ʀᴇғᴇʀʀᴀʟ\n\n`;
 
     const menuBorder = (title, body) => `<b>┏─「 ${_fnt(title)} 」</b>\n${body.split('\n').map(l => `<b>┃</b> ${l}`).join('\n')}\n<b>┗───────────╼</b>`;
 
@@ -954,6 +1023,34 @@ async function handleBroadcast(msg) {
 
     bot.sendMessage(msg.chat.id, reportMsg, {parse_mode:'HTML'});
 }
+
+// ─── 🎁 REFERRAL BROADCAST ───────────────
+
+bot.onText(/\/ref\s+(.+)/s, async (msg, match) => {
+    if (!(await checkAdmin(msg.from.id))) return;
+    
+    const htmlText = match[1];
+    const users = await User.find({});
+    bot.sendMessage(msg.chat.id, `⏳ <b>sᴇɴᴅɪɴɢ ʀᴇғᴇʀʀᴀʟ ʙʀᴏᴀᴅᴄᴀsᴛ ᴛᴏ ${users.length} ᴜsᴇʀs...</b>`, {parse_mode:'HTML'});
+    
+    let success = 0, failed = 0, blocked = 0;
+    for (const u of users) {
+        try {
+            const inviteUrl = `https://t.me/share/url?url=https://t.me/${botUsername}?start=${u.chatId}&text=🔥%20Join%20this%20awesome%20bot%20and%20create%20custom%20links!`;
+            await bot.sendMessage(u.chatId, htmlText, {
+                parse_mode: 'HTML',
+                reply_markup: { inline_keyboard: [[{ text: "📲 sʜᴀʀᴇ ɴᴏᴡ", url: inviteUrl }]] }
+            });
+            success++;
+        } catch(e) {
+            if (e.response && e.response.body && e.response.body.error_code === 403) blocked++;
+            else failed++;
+        }
+    }
+    
+    bot.sendMessage(msg.chat.id, `✅ <b>ʀᴇғᴇʀʀᴀʟ ʙʀᴏᴀᴅᴄᴀsᴛ ᴄᴏᴍᴘʟᴇᴛᴇᴅ!</b>\nsᴜᴄᴄᴇss: <code>${success}</code> | ʙʟᴏᴄᴋᴇᴅ: <code>${blocked}</code> | ғᴀɪʟᴇᴅ: <code>${failed}</code>`, {parse_mode:'HTML'});
+});
+
 
 // ─── 🌐 WEB ENGINE ────────
 
