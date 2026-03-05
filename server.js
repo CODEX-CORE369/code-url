@@ -23,6 +23,18 @@ const MONGO_URI = "mongodb+srv://darkgangdarks_db_user:aEEYR59YEVameS1y@cluster0
 const START_IMG_URL = "https://graph.org/file/c3b658c9adaf0aba7153f-a22a3447d1410355a0.jpg";
 
 const bot = new TelegramBot(TOKEN, { polling: true });
+
+// ─── ⌨️ SET BOT COMMANDS ─────────────────────────────────
+bot.setMyCommands([
+    { command: 'start', description: 'sᴛᴀʀᴛ ᴛʜᴇ ʙᴏᴛ' },
+    { command: 'help', description: 'ʜᴇʟᴘ ᴍᴇɴᴜ' },
+    { command: 'create', description: 'ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ' },
+    { command: 'info', description: 'ᴍʏ ɪɴғᴏ' },
+    { command: 'referral', description: 'sʜᴀʀᴇ ᴀɴᴅ ᴇᴀʀɴ' },
+    { command: 'dev', description: 'ᴅᴇᴠᴇʟᴏᴘᴇʀ ɪɴғᴏ' },
+    { command: 'gift', description: 'ɢɪғᴛ ᴄᴏɪɴs ᴛᴏ ᴜsᴇʀs' }
+]);
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -90,7 +102,7 @@ function escapeHtml(text) {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
-    }
+}
 
 async function resolveUser(msg, input) {
     if (msg.reply_to_message) return await User.findOne({ chatId: msg.reply_to_message.from.id });
@@ -228,16 +240,11 @@ async function showMainMenu(msg) {
         caption: content,
         parse_mode: 'HTML',
         reply_markup: { 
-            keyboard: [
-                [{ text: "🔗 ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ" }], 
-                [{ text: "👤 ᴍʏ ɪɴғᴏ" }, { text: "👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ" }],
-                [{ text: "🤝 sʜᴀʀᴇ & ᴇᴀʀɴ" }, { text: "🛠 ᴍᴇɴᴜ" }]
-            ], 
-            resize_keyboard: true 
+            remove_keyboard: true 
         }
     });
 
-    await bot.sendMessage(chatId, `💬 <b>ɴᴇᴇᴅ ʜᴇʟᴘ ᴏʀ sᴜᴘᴘᴏʀᴛ?</b>`, {
+    await bot.sendMessage(chatId, `💬 <b>ɴᴇᴇᴅ ʜᴇʟᴘ ᴏʀ sᴜᴘᴘᴏʀᴛ?</b>\n⌨️ <b>ᴛʏᴘᴇ / ᴛᴏ sᴇᴇ ᴀʟʟ ᴄᴏᴍᴍᴀɴᴅs!</b>`, {
         parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: [[{ text: "🛠 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ", url: `https://t.me/${GROUP_ID.replace('@', '')}` }]]
@@ -420,7 +427,7 @@ function handleDev(chatId) {
     bot.sendMessage(chatId, makeBorder("ᴅᴇᴠᴇʟᴏᴘᴇʀ", "👨‍💻: ᴄᴏᴅᴇᴅ ʙʏ ᴅx-ᴄᴏᴅᴇx\n🛡: ᴘᴏᴡᴇʀᴇᴅ ʙʏ ᴄᴏᴅᴇx—ᴛᴇᴀᴍ"), { 
         parse_mode: 'HTML',
         reply_markup: {
-            inline_keyboard: [[{ text: "🛠 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ", url: `https://t.me/${GROUP_ID.replace('@', '')}` }]]
+            inline_keyboard: [[{ text: "🛠 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜড়ায়", url: `https://t.me/${GROUP_ID.replace('@', '')}` }]]
         }
     });
 }
@@ -513,15 +520,10 @@ bot.on('callback_query', async (query) => {
                     }
                 });
 
-                await bot.sendMessage(chatId, `⌨️ <b>ᴍᴇɴᴜ ᴋᴇʏʙᴏᴀʀᴅ ᴀᴄᴛɪᴠᴀᴛᴇᴅ.</b>`, {
+                await bot.sendMessage(chatId, `⌨️ <b>ᴄᴏᴍᴍᴀɴᴅ ᴍᴇɴᴜ ᴀᴄᴛɪᴠᴀᴛᴇᴅ.\n👉 ᴛʏᴘᴇ / ᴛᴏ sᴇᴇ ᴀʟʟ ᴄᴏᴍᴍᴀɴᴅs.</b>`, {
                     parse_mode: 'HTML',
                     reply_markup: {
-                        keyboard: [
-                            [{ text: "🔗 ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ" }],
-                            [{ text: "👤 ᴍʏ ɪɴғᴏ" }, { text: "👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ" }],
-                            [{ text: "🤝 sʜᴀʀᴇ & ᴇᴀʀɴ" }, { text: "🛠 ᴍᴇɴᴜ" }]
-                        ],
-                        resize_keyboard: true
+                        remove_keyboard: true
                     }
                 });
             } else {
