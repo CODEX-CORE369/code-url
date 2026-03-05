@@ -20,7 +20,7 @@ const GROUP_ID = "@Codex_teamx";
 const MONGO_URI = "mongodb+srv://darkgangdarks_db_user:aEEYR59YEVameS1y@cluster0.iyakwh0.mongodb.net/DEVICEX?retryWrites=true&w=majority";
 
 // 🖼 IMAGES
-const START_IMG_URL = "https://graph.org/file/be3b54b5d3a2d228c14a4-37ae8edb93591bd522.jpg";
+const START_IMG_URL = "https://graph.org/file/c3b658c9adaf0aba7153f-a22a3447d1410355a0.jpg";
 
 const bot = new TelegramBot(TOKEN, { polling: true });
 const app = express();
