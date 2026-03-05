@@ -20,7 +20,7 @@ const GROUP_ID = "@Codex_teamx";
 const MONGO_URI = "mongodb+srv://darkgangdarks_db_user:aEEYR59YEVameS1y@cluster0.iyakwh0.mongodb.net/DEVICEX?retryWrites=true&w=majority";
 
 // 🖼 IMAGES
-const START_IMG_URL = "https://graph.org/file/438f093fd5762d3c3206e-82b7d5ec9f9be10bde.jpg";
+const START_IMG_URL = "https://graph.org/file/be3b54b5d3a2d228c14a4-37ae8edb93591bd522.jpg";
 
 const bot = new TelegramBot(TOKEN, { polling: true });
 const app = express();
@@ -207,7 +207,7 @@ async function showMainMenu(msg) {
 ┃ <b>┏─「 sʏsᴛᴇᴍ ɪɴғᴏ 」</b>
 ┃ ┃ 👨‍💻 <b>ᴅᴇᴠᴇʟᴏᴘᴇʀ: Ｄｘ－Ｓｉｍｕ</b>
 ┃ ┗───────────╼
-┃ ᴜsᴀɢᴇ: /help
+┃ <b>ᴜsᴀɢᴇ: /help</b>
 <b>┗━━━━━━━━━━┛</b>`;
 
     await bot.sendPhoto(chatId, START_IMG_URL, {
