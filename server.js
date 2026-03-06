@@ -23,18 +23,6 @@ const MONGO_URI = "mongodb+srv://darkgangdarks_db_user:aEEYR59YEVameS1y@cluster0
 const START_IMG_URL = "https://graph.org/file/c3b658c9adaf0aba7153f-a22a3447d1410355a0.jpg";
 
 const bot = new TelegramBot(TOKEN, { polling: true });
-
-// ─── ⌨️ SET BOT COMMANDS ─────────────────────────────────
-bot.setMyCommands([
-    { command: 'start', description: 'sᴛᴀʀᴛ ᴛʜᴇ ʙᴏᴛ' },
-    { command: 'help', description: 'ʜᴇʟᴘ ᴍᴇɴᴜ' },
-    { command: 'create', description: 'ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ' },
-    { command: 'info', description: 'ᴍʏ ɪɴғᴏ' },
-    { command: 'referral', description: 'sʜᴀʀᴇ ᴀɴᴅ ᴇᴀʀɴ' },
-    { command: 'dev', description: 'ᴅᴇᴠᴇʟᴏᴘᴇʀ ɪɴғᴏ' },
-    { command: 'gift', description: 'ɢɪғᴛ ᴄᴏɪɴs ᴛᴏ ᴜsᴇʀs' }
-]);
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -240,11 +228,16 @@ async function showMainMenu(msg) {
         caption: content,
         parse_mode: 'HTML',
         reply_markup: { 
-            remove_keyboard: true 
+            keyboard: [
+                [{ text: "🔗 ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ" }], 
+                [{ text: "👤 ᴍʏ ɪɴғᴏ" }, { text: "👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ" }],
+                [{ text: "🤝 sʜᴀʀᴇ & ᴇᴀʀɴ" }, { text: "💰 ʙᴜʏ ᴄᴏɪɴ" }]
+            ], 
+            resize_keyboard: true 
         }
     });
 
-    await bot.sendMessage(chatId, `💬 <b>ɴᴇᴇᴅ ʜᴇʟᴘ ᴏʀ sᴜᴘᴘᴏʀᴛ?</b>\n⌨️ <b>ᴛʏᴘᴇ / ᴛᴏ sᴇᴇ ᴀʟʟ ᴄᴏᴍᴍᴀɴᴅs!</b>`, {
+    await bot.sendMessage(chatId, `💬 <b>ɴᴇᴇᴅ ʜᴇʟᴘ ᴏʀ sᴜᴘᴘᴏʀᴛ?</b>`, {
         parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: [[{ text: "🛠 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ", url: `https://t.me/${GROUP_ID.replace('@', '')}` }]]
@@ -288,14 +281,15 @@ bot.on('message', async (msg) => {
     const text = msg.text;
 
     // Group Security & Redirection logic
-    const adminCmds = ['/add', '/rem', '/rm', '/reset', '/ban', '/unban', '/users', '/share', '/sudo', '/ulist', '/ulink', '/rmlink', '/menu', '/data', '/broadcast', '/ref'];
+    const allUserCmds = ['/start', '/create', '/info', '/dev', '/referral', '/help', '/gift', '/buy'];
     if (msg.chat.type !== 'private') {
         if (text && text.startsWith('/')) {
             const cmdPrefix = text.split(' ')[0].toLowerCase();
-            if (!adminCmds.includes(cmdPrefix)) {
+            if (allUserCmds.includes(cmdPrefix)) {
                 const safeCmd = cmdPrefix.replace('/', '');
                 bot.sendMessage(chatId, `<b>⚠️ ${_fnt("PLEASE USE COMMANDS IN PRIVATE CHAT")}</b>\n<b>┃ 🤖: ᴄʟɪᴄᴋ ʙᴇʟᴏᴡ ᴛᴏ ᴜsᴇ ɪɴ ᴅᴍ</b>`, {
                     parse_mode: 'HTML',
+                    reply_to_message_id: msg.message_id,
                     reply_markup: {
                         inline_keyboard: [[{ text: "🤖 ɢᴏ ᴛᴏ ʙᴏᴛ ᴅᴍ", url: `https://t.me/${botUsername}?start=${safeCmd}` }]]
                     }
@@ -328,8 +322,8 @@ bot.on('message', async (msg) => {
     else if (text === "/help") {
         handleHelp(chatId);
     }
-    else if (text === "🛠 ᴍᴇɴᴜ") {
-        handleUserMenu(chatId);
+    else if (text === "💰 ʙᴜʏ ᴄᴏɪɴ" || text === "/buy") {
+        handleBuyCoin(chatId);
     }
     
     // Custom Link Steps
@@ -375,14 +369,33 @@ async function handleCreateUrl(chatId, user) {
     });
 }
 
-function handleUserMenu(chatId) {
-    const menuTxt = `<b>┏━━「 ${_fnt("BOT COMMANDS")} 」━━┓</b>\n┃ <b>👇 sᴇʟᴇᴄᴛ ᴀ ᴄᴏᴍᴍᴀɴᴅ ʙᴇʟᴏᴡ:</b>\n<b>┗━━━━━━━━━━┛</b>`;
-    bot.sendMessage(chatId, menuTxt, {
+function handleBuyCoin(chatId) {
+    const buyText = `<b>┏━━「 ᴅᴀsʜʙᴏᴀʀᴅ 」━━┓
+┃ ┏─「 ʙᴜʏ ᴄᴏɪɴ 」
+┃ ┃  1. ₹30 = 60 ᴄᴏɪɴ
+┃ ┃  2. ₹50 = 105 ᴄᴏɪɴ
+┃ ┃  3. ₹100 = 210 ᴄᴏɪɴ
+┃ ┃  4. ₹200 = 330 ᴄᴏɪɴ
+┃ ┃  5. ₹300 = 2 ᴍᴏɴᴛʜ ғʀᴇᴇ
+┃ ┃  6. ₹500 = 5 ᴍᴏɴᴛʜ ғʀᴇᴇ
+┃ ┃  7. ₹1000 = 1 ʏᴇᴀʀ ғʀᴇᴇ
+┃ ┗───────────╼
+┗━━━━━━━━━━━━━┛</b>`;
+
+    const baseUrl = `https://t.me/dx_codex?text=**ɪ%20ᴡᴀɴᴛ%20ᴛᴏ%20ʙᴜʏ%20ᴄᴏɪɴ**%0A`;
+
+    bot.sendMessage(chatId, buyText, {
         parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: [
-                [{ text: "👤 ᴍʏ ɪɴғᴏ", callback_data: "cmd_info" }, { text: "👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ", callback_data: "cmd_dev" }],
-                [{ text: "🤝 sʜᴀʀᴇ & ᴇᴀʀɴ", callback_data: "cmd_referral" }]
+                [{ text: "1. ₹30 = 60 ᴄᴏɪɴ", url: baseUrl + encodeURIComponent("Package 1: ₹30 = 60 ᴄᴏɪɴ") }],
+                [{ text: "2. ₹50 = 105 ᴄᴏɪɴ", url: baseUrl + encodeURIComponent("Package 2: ₹50 = 105 ᴄᴏɪɴ") }],
+                [{ text: "3. ₹100 = 210 ᴄᴏɪɴ", url: baseUrl + encodeURIComponent("Package 3: ₹100 = 210 ᴄᴏɪɴ") }],
+                [{ text: "4. ₹200 = 330 ᴄᴏɪɴ", url: baseUrl + encodeURIComponent("Package 4: ₹200 = 330 ᴄᴏɪɴ") }],
+                [{ text: "5. ₹300 = 2 ᴍᴏɴᴛʜ ғʀᴇᴇ", url: baseUrl + encodeURIComponent("Package 5: ₹300 = 2 ᴍᴏɴᴛʜ ғʀᴇᴇ") }],
+                [{ text: "6. ₹500 = 5 ᴍᴏɴᴛʜ ғʀᴇᴇ", url: baseUrl + encodeURIComponent("Package 6: ₹500 = 5 ᴍᴏɴᴛʜ ғʀᴇᴇ") }],
+                [{ text: "7. ₹1000 = 1 ʏᴇᴀʀ ғʀᴇᴇ", url: baseUrl + encodeURIComponent("Package 7: ₹1000 = 1 ʏᴇᴀʀ ғʀᴇᴇ") }],
+                [{ text: "💳 ᴏᴛʜᴇʀ", url: baseUrl + encodeURIComponent("Other Package") }]
             ]
         }
     });
@@ -427,7 +440,7 @@ function handleDev(chatId) {
     bot.sendMessage(chatId, makeBorder("ᴅᴇᴠᴇʟᴏᴘᴇʀ", "👨‍💻: ᴄᴏᴅᴇᴅ ʙʏ ᴅx-ᴄᴏᴅᴇx\n🛡: ᴘᴏᴡᴇʀᴇᴅ ʙʏ ᴄᴏᴅᴇx—ᴛᴇᴀᴍ"), { 
         parse_mode: 'HTML',
         reply_markup: {
-            inline_keyboard: [[{ text: "🛠 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜড়ায়", url: `https://t.me/${GROUP_ID.replace('@', '')}` }]]
+            inline_keyboard: [[{ text: "🛠 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ", url: `https://t.me/${GROUP_ID.replace('@', '')}` }]]
         }
     });
 }
@@ -520,10 +533,15 @@ bot.on('callback_query', async (query) => {
                     }
                 });
 
-                await bot.sendMessage(chatId, `⌨️ <b>ᴄᴏᴍᴍᴀɴᴅ ᴍᴇɴᴜ ᴀᴄᴛɪᴠᴀᴛᴇᴅ.\n👉 ᴛʏᴘᴇ / ᴛᴏ sᴇᴇ ᴀʟʟ ᴄᴏᴍᴍᴀɴᴅs.</b>`, {
+                await bot.sendMessage(chatId, `⌨️ <b>ᴍᴇɴᴜ ᴋᴇʏʙᴏᴀʀᴅ ᴀᴄᴛɪᴠᴀᴛᴇᴅ.</b>`, {
                     parse_mode: 'HTML',
                     reply_markup: {
-                        remove_keyboard: true
+                        keyboard: [
+                            [{ text: "🔗 ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ" }],
+                            [{ text: "👤 ᴍʏ ɪɴғᴏ" }, { text: "👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ" }],
+                            [{ text: "🤝 sʜᴀʀᴇ & ᴇᴀʀɴ" }, { text: "💰 ʙᴜʏ ᴄᴏɪɴ" }]
+                        ],
+                        resize_keyboard: true
                     }
                 });
             } else {
@@ -617,6 +635,7 @@ bot.onText(/\/gift$/, (msg) => {
 bot.onText(/\/sudo(?:\s+(.+))?/, async (msg, match) => {
     if (!OWNER_IDS.includes(msg.from.id)) return;
     
+    // Show Sudo List
     if (!match[1] && !msg.reply_to_message) {
         const sudos = await User.find({ isSudo: true });
         let txt = `<b>┏━「 ꜱᴜᴅᴏ ʟɪꜱᴛ 」</b>\n`;
@@ -636,13 +655,39 @@ bot.onText(/\/sudo(?:\s+(.+))?/, async (msg, match) => {
         return bot.sendMessage(msg.chat.id, txt, {parse_mode:'HTML'});
     }
 
-    const targetUser = await resolveUser(msg, match[1]);
-    if (!targetUser) return bot.sendMessage(msg.chat.id, makeBorder("⚠️ ᴇʀʀᴏʀ", "❌: ᴜsᴇʀ ɴᴏᴛ ғᴏᴜɴᴅ"), {parse_mode:'HTML'});
+    let targetId;
+    let targetName = "User";
+
+    // Handle Reply or Manual ID
+    if (msg.reply_to_message) {
+        targetId = msg.reply_to_message.from.id;
+        targetName = msg.reply_to_message.from.first_name || "User";
+    } else if (match[1]) {
+        const cleanInput = match[1].trim().replace('@', '');
+        if (/^\d+$/.test(cleanInput)) {
+            targetId = parseInt(cleanInput);
+        } else {
+            const u = await User.findOne({ username: { $regex: new RegExp(`^${cleanInput}$`, 'i') } });
+            if (u) {
+                targetId = u.chatId;
+                targetName = u.firstName;
+            }
+        }
+    }
+
+    if (!targetId || isNaN(targetId)) {
+        return bot.sendMessage(msg.chat.id, makeBorder("⚠️ ᴇʀʀᴏʀ", "❌: ᴜsᴇʀ ɴᴏᴛ ғᴏᴜɴᴅ / ɪɴᴠᴀʟɪᴅ ɪᴅ"), {parse_mode:'HTML'});
+    }
     
-    targetUser.isSudo = !targetUser.isSudo;
+    let targetUser = await User.findOne({ chatId: targetId });
+    if (!targetUser) {
+        targetUser = new User({ chatId: targetId, firstName: targetName, isSudo: true });
+    } else {
+        targetUser.isSudo = !targetUser.isSudo;
+    }
     await targetUser.save();
     
-    bot.sendMessage(msg.chat.id, makeBorder("👑 sᴜᴅᴏ ᴜᴘᴅᴀᴛᴇ", `✅: ${targetUser.firstName} sᴜᴅᴏ ᴀᴄᴄᴇss ɪs ɴᴏᴡ: <b>${targetUser.isSudo}</b>`), {parse_mode:'HTML'});
+    bot.sendMessage(msg.chat.id, makeBorder("👑 sᴜᴅᴏ ᴜᴘᴅᴀᴛᴇ", `✅: ${targetUser.firstName || targetId} sᴜᴅᴏ ᴀᴄᴄᴇss ɪs ɴᴏᴡ: <b>${targetUser.isSudo}</b>`), {parse_mode:'HTML'});
 });
 
 
