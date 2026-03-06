@@ -827,7 +827,7 @@ bot.onText(/\/ulink(?:\s+(\d+))?/, async (msg, match) => {
         parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: [
-                [{ text: "🗑️ ᴅᴇʟᴇᴛᴇ sᴘᴇᴄɪғɪᴄ", callback_data: `prompt_del_${targetId}` }],
+                [{ text: "🗑️ ᴅᴇʟᴇᴛᴇ specific", callback_data: `prompt_del_${targetId}` }],
                 [{ text: "🔥 ᴅᴇʟᴇᴛᴇ ᴀʟʟ", callback_data: `delall_${targetId}` }]
             ]
         }
@@ -1058,6 +1058,7 @@ async function handleBroadcast(msg) {
             if (e.response && e.response.body && e.response.body.error_code === 403) blocked++;
             else failed++;
         }
+        await new Promise(resolve => setTimeout(resolve, 50)); // Anti Rate-Limit Delay
     }
     
     const reportMsg = `✅ <b>ʙʀᴏᴀᴅᴄᴀsᴛ ᴄᴏᴍᴘʟᴇᴛᴇᴅ</b>
@@ -1093,6 +1094,7 @@ bot.onText(/\/ref\s+(.+)/s, async (msg, match) => {
             if (e.response && e.response.body && e.response.body.error_code === 403) blocked++;
             else failed++;
         }
+        await new Promise(resolve => setTimeout(resolve, 50)); // Anti Rate-Limit Delay
     }
     
     bot.sendMessage(msg.chat.id, `✅ <b>ʀᴇғᴇʀʀᴀʟ ʙʀᴏᴀᴅᴄᴀsᴛ ᴄᴏᴍᴘʟᴇᴛᴇᴅ!</b>\nsᴜᴄᴄᴇss: <code>${success}</code> | ʙʟᴏᴄᴋᴇᴅ: <code>${blocked}</code> | ғᴀɪʟᴇᴅ: <code>${failed}</code>`, {parse_mode:'HTML'});
