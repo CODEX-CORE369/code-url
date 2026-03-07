@@ -358,10 +358,10 @@ async function handleCreateUrl(chatId, user) {
     const info = `<b>👤:</b> <code>${user.firstName}</code>
 ┃ ${balText}
 ┃ <b>┏─「 ɪɴsᴛʀᴜᴄᴛɪᴏɴs 」</b>
-┃ ┃ 3️⃣ <b>ʀᴀɴᴅᴏᴍ:</b> sʏsᴛᴇᴍ ᴡɪʟʟ ᴍᴀᴋᴇ ᴀ ɴᴀᴍᴇ
-┃ ┃ 4️⃣ <b>ᴀғᴛᴇʀ ᴛʜᴀᴛ:</b> ʏᴏᴜ ᴄᴀɴ sᴇᴛ ʀᴇᴅɪʀᴇᴄᴛ
-┃ ┗───────────╼
-┃ <b>⚠️ ɴᴏᴛᴇ: ᴄᴜsᴛᴏᴍ ɴᴀᴍᴇ ᴍᴜsᴛ ʙᴇ 𝟹+ ʟᴇᴛᴛᴇʀs</b>`;
+┃ ┃ 3️⃣ <b>ʀᴀɴᴅᴏᴍ: sʏsᴛᴇᴍ ᴡɪʟʟ ᴍᴀᴋᴇ ᴀ ɴᴀᴍᴇ
+┃ ┃ 4️⃣ <b>ᴀғᴛᴇʀ ᴛʜᴀᴛ: ʏᴏᴜ ᴄᴀɴ sᴇᴛ ʀᴇᴅɪʀᴇᴄᴛ
+┃ ┗───────────╼</b>
+┃ <b>ᴄᴜsᴛᴏᴍ ɴᴀᴍᴇ ᴍᴜsᴛ ʙᴇ 𝟹+ ʟᴇᴛᴛᴇʀs</b>`;
 
     bot.sendMessage(chatId, makeBorder("ᴄʀᴇᴀᴛᴇ ᴜʀʟ", info), {
         parse_mode: 'HTML',
@@ -388,13 +388,13 @@ function handleBuyCoin(chatId) {
         parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: [
-                [{ text: "1. ₹30 = 60 ᴄᴏɪɴ", url: baseUrl + encodeURIComponent("Package 1: ₹30 = 60 ᴄᴏɪɴ") }],
-                [{ text: "2. ₹50 = 105 ᴄᴏɪɴ", url: baseUrl + encodeURIComponent("Package 2: ₹50 = 105 ᴄᴏɪɴ") }],
-                [{ text: "3. ₹100 = 210 ᴄᴏɪɴ", url: baseUrl + encodeURIComponent("Package 3: ₹100 = 210 ᴄᴏɪɴ") }],
-                [{ text: "4. ₹200 = 330 ᴄᴏɪɴ", url: baseUrl + encodeURIComponent("Package 4: ₹200 = 330 ᴄᴏɪɴ") }],
-                [{ text: "5. ₹300 = 2 ᴍᴏɴᴛʜ ғʀᴇᴇ", url: baseUrl + encodeURIComponent("Package 5: ₹300 = 2 ᴍᴏɴᴛʜ ғʀᴇᴇ") }],
-                [{ text: "6. ₹500 = 5 ᴍᴏɴᴛʜ ғʀᴇᴇ", url: baseUrl + encodeURIComponent("Package 6: ₹500 = 5 ᴍᴏɴᴛʜ ғʀᴇᴇ") }],
-                [{ text: "7. ₹1000 = 1 ʏᴇᴀʀ ғʀᴇᴇ", url: baseUrl + encodeURIComponent("Package 7: ₹1000 = 1 ʏᴇᴀʀ ғʀᴇᴇ") }],
+                [{ text: "₹30 = 60 ᴄᴏɪɴ", url: baseUrl + encodeURIComponent("Package ₹30 = 60 ᴄᴏɪɴ") }],
+                [{ text: "₹50 = 105 ᴄᴏɪɴ", url: baseUrl + encodeURIComponent("Package ₹50 = 105 ᴄᴏɪɴ") }],
+                [{ text: "₹100 = 210 ᴄᴏɪɴ", url: baseUrl + encodeURIComponent("Package ₹100 = 210 ᴄᴏɪɴ") }],
+                [{ text: "₹200 = 330 ᴄᴏɪɴ", url: baseUrl + encodeURIComponent("Package ₹200 = 330 ᴄᴏɪɴ") }],
+                [{ text: "₹300 = 2 ᴍᴏɴᴛʜ ғʀᴇᴇ", url: baseUrl + encodeURIComponent("Package ₹300 = 2 ᴍᴏɴᴛʜ ғʀᴇᴇ") }],
+                [{ text: "₹500 = 5 ᴍᴏɴᴛʜ ғʀᴇᴇ", url: baseUrl + encodeURIComponent("Package ₹500 = 5 ᴍᴏɴᴛʜ ғʀᴇᴇ") }],
+                [{ text: "₹1000 = 1 ʏᴇᴀʀ ғʀᴇᴇ", url: baseUrl + encodeURIComponent("Package ₹1000 = 1 ʏᴇᴀʀ ғʀᴇᴇ") }],
                 [{ text: "💳 ᴏᴛʜᴇʀ", url: baseUrl + encodeURIComponent("Other Package") }]
             ]
         }
@@ -464,19 +464,19 @@ function handleShare(chatId, user) {
 
 function handleHelp(chatId) {
     const helpText = `<b>┏━━「 ${_fnt("HELP MENU")} 」━━┓</b>
-┃ <b>┏─「 ᴜsᴇʀ ᴄᴏᴍᴍᴀɴᴅs 」</b>
+┃ <b>┏─「 ᴜsᴇʀ ᴄᴏᴍᴍᴀɴᴅs 」
 ┃ ┃ 🔹 /create - <code>ᴍᴀᴋᴇ ᴄᴜsᴛᴏᴍ ᴜʀʟ</code>
 ┃ ┃ 🔹 /info - <code>ᴠɪᴇᴡ ᴘʀᴏғɪʟᴇ</code>
 ┃ ┃ 🔹 /referral - <code>sʜᴀʀᴇ & ᴇᴀʀɴ</code>
 ┃ ┃ 🔹 /dev - <code>ᴅᴇᴠᴇʟᴏᴘᴇʀ ɪɴғᴏ</code>
 ┃ ┃ 🔹 /gift 10 [id] - <code>ɢɪғᴛ ᴄᴏɪɴs ᴛᴏ ᴜsᴇʀ</code>
+┃ ┗───────────╼</b>
+┃ <b>┏─「 ʙᴜᴛᴛᴏɴs ᴜsᴀɢᴇ 」
+┃ ┃ 🔘 ᴄʀᴇᴀᴛᴇ ᴜʀʟ: ᴍᴀᴋᴇ ɴᴇᴡ ᴘʜɪsʜɪɴɢ ʟɪɴᴋs
+┃ ┃ 🔘 ᴍʏ ɪɴғᴏ: ᴄʜᴇᴄᴋ ʏᴏᴜʀ ᴀᴄᴛɪᴠᴇ sᴛᴀᴛs/ᴄᴏɪɴs
+┃ ┃ 🔘 sʜᴀʀᴇ & ᴇᴀʀɴ: ɢᴇᴛ ʟɪɴᴋ ᴛᴏ ʀᴇғᴇʀ
 ┃ ┗───────────╼
-┃ <b>┏─「 ʙᴜᴛᴛᴏɴs ᴜsᴀɢᴇ 」</b>
-┃ ┃ 🔘 <b>ᴄʀᴇᴀᴛᴇ ᴜʀʟ:</b> ᴍᴀᴋᴇ ɴᴇᴡ ᴘʜɪsʜɪɴɢ ʟɪɴᴋs
-┃ ┃ 🔘 <b>ᴍʏ ɪɴғᴏ:</b> ᴄʜᴇᴄᴋ ʏᴏᴜʀ ᴀᴄᴛɪᴠᴇ sᴛᴀᴛs/ᴄᴏɪɴs
-┃ ┃ 🔘 <b>sʜᴀʀᴇ & ᴇᴀʀɴ:</b> ɢᴇᴛ ʟɪɴᴋ ᴛᴏ ʀᴇғᴇʀ
-┃ ┗───────────╼
-<b>┗━━━━━━━━━━┛</b>`;
+┗━━━━━━━━━━┛</b>`;
     bot.sendMessage(chatId, helpText, { parse_mode: 'HTML' });
 }
 
@@ -593,7 +593,7 @@ async function createFinalLink(msg, name, redirectUrl) {
     await new Link({ shortId: name, creatorChatId: chatId, originalUrl: redirectUrl }).save();
     delete userState[chatId];
     
-    const url = `https://code-url-b0f2.onrender.com/w/${name}`;
+    const url = `https://code-url-dpb7.onrender.com/w/${name}`;
     let bal = isSub ? `sᴜʙsᴄʀɪᴘᴛɪᴏɴ ᴀᴄᴛɪᴠᴇ` : `ʀᴇᴍᴀɪɴɪɴɢ: ${user.coins} ᴄᴏɪɴs, ${user.freeUrlsLeft} ғʀᴇᴇ`;
     
     bot.sendMessage(chatId, `<b>┏━━「 ✅ ${_fnt("SUCCESS")} 」━━┓</b>\n┃ 🔗: ${url}\n┃ \n┃ 🔄: ${redirectUrl || 'N/A'}\n┃ 💰: ${bal}\n<b>┗━━━━━━━━━━┛</b>`, { parse_mode: 'HTML' });
