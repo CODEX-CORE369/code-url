@@ -1,8 +1,3 @@
-/**
- * 𝐃𝐗-𝐂𝐎𝐃𝐄𝐗 𝐌𝐎𝐓𝐇𝐄𝐑 𝐒𝐘𝐒𝐓𝐄𝐌 v11.0 (Super Advanced)
- * Features: Referral Update, Subs/Time-based Access, Gift, Sudo, Adv Broadcast, Images, UI Tweaks
- */
-
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 const mongoose = require('mongoose');
@@ -11,7 +6,6 @@ const cors = require('cors');
 const axios = require('axios');
 const fs = require('fs');
 
-// 🛠 CONFIGURATION
 const TOKEN = "8291862788:AAEvXOm7TSrCIjb1TxPm7rleiG_NooTgxdE";
 const OWNER_IDS = [6703335929, 6041728084, 5136260272, 7089533955, 6125809347]; 
 const CHANNEL_ID1 = "@alphacodex369";
@@ -19,7 +13,6 @@ const CHANNEL_ID2 = "@Termuxcodex";
 const GROUP_ID = "@Codex_teamx"; 
 const MONGO_URI = "mongodb+srv://darkgangdarks_db_user:aEEYR59YEVameS1y@cluster0.iyakwh0.mongodb.net/DEVICEX?retryWrites=true&w=majority";
 
-// 🖼 IMAGES
 const START_IMG_URL = "https://graph.org/file/c3b658c9adaf0aba7153f-a22a3447d1410355a0.jpg";
 
 const bot = new TelegramBot(TOKEN, { polling: true });
@@ -29,8 +22,6 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(bodyParser.json({ limit: '50mb' })); 
 app.use(bodyParser.urlencoded({ extended: true }));
-
-// ─── 💾 DATABASE ──────────────────────────────────────────
 
 mongoose.connect(MONGO_URI)
     .then(() => console.log('✅ MongoDB Connected'))
@@ -46,8 +37,8 @@ const userSchema = new mongoose.Schema({
     joinedAt: { type: Date, default: Date.now },
     referredBy: { type: Number, default: null },
     referralCount: { type: Number, default: 0 },
-    subscriptionExpiry: { type: Date, default: null }, // NEW: Subscription Time
-    isSudo: { type: Boolean, default: false } // NEW: Sudo Access
+    subscriptionExpiry: { type: Date, default: null },
+    isSudo: { type: Boolean, default: false }
 });
 
 const linkSchema = new mongoose.Schema({
@@ -67,7 +58,6 @@ let shareSystemEnabled = true;
 let botUsername = "DX_CODEX_BOT";
 bot.getMe().then(me => botUsername = me.username);
 
-// ─── 🎨 STYLING & HELPERS ─────────────
 
 const fontMap = {'a':'ᴀ','b':'ʙ','c':'ᴄ','d':'ᴅ','e':'ᴇ','f':'ғ','g':'ɢ','h':'ʜ','i':'ɪ','j':'ᴊ','k':'ᴋ','l':'ʟ','m':'ᴍ','n':'ɴ','o':'ᴏ','p':'ᴘ','q':'ǫ','r':'ʀ','s':'s','t':'ᴛ','u':'ᴜ','v':'ᴠ','w':'ᴡ','x':'x','y':'ʏ','z':'ᴢ','A':'ᴀ','B':'ʙ','C':'ᴄ','D':'ᴅ','E':'ᴇ','F':'ғ','G':'ɢ','H':'ʜ','I':'ɪ','J':'ᴊ','K':'ᴋ','L':'ʟ','M':'ᴍ','N':'ɴ','O':'ᴏ','P':'ᴘ','Q':'ǫ','R':'ʀ','S':'s','T':'ᴛ','U':'ᴜ','V':'ᴠ','W':'ᴡ','X':'x','Y':'ʏ','Z':'ᴢ','0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉'};
 
@@ -91,6 +81,7 @@ function escapeHtml(text) {
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
 }
+
 
 async function resolveUser(msg, input) {
     if (msg.reply_to_message) return await User.findOne({ chatId: msg.reply_to_message.from.id });
@@ -119,8 +110,6 @@ function getSubTimeLeft(user) {
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     return `${days} ᴅᴀʏs, ${hours} ʜᴏᴜʀs`;
 }
-
-// ─── 🤖 BOT LOGIC (START & MEMBERSHIP) ──────────────────
 
 async function checkMembership(chatId) {
     try {
@@ -153,7 +142,6 @@ bot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
                 firstName: escapeHtml(msg.from.first_name) || "User" 
             });
 
-            // Advanced Referral Logic (2 users = 1 free coin)
             if (match[1] && !isNaN(match[1]) && match[1] != chatId) {
                 user.referredBy = parseInt(match[1]);
             }
@@ -164,7 +152,7 @@ bot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
                 if (referrer) {
                     referrer.referralCount += 1;
                     if (referrer.referralCount % 2 === 0) {
-                        referrer.freeUrlsLeft += 1; // Gives 1 free URL/Coin for creating links
+                        referrer.freeUrlsLeft += 1;
                         bot.sendMessage(referrer.chatId, makeBorder("🎉 ʀᴇғᴇʀʀᴀʟ sᴜᴄᴄᴇss", `✅: 2 ɴᴇᴡ ᴜsᴇʀs ᴊᴏɪɴᴇᴅ ᴠɪᴀ ʏᴏᴜʀ ʟɪɴᴋ!\n💰: +1 ғʀᴇᴇ ᴄᴏɪɴ ᴀᴅᴅᴇᴅ ᴛᴏ ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ.`), {parse_mode:'HTML'});
                     } else {
                         bot.sendMessage(referrer.chatId, makeBorder("📈 ʀᴇғᴇʀʀᴀʟ ᴛʀᴀᴄᴋ", `✅: 1 ɴᴇᴡ ᴜsᴇʀ ᴊᴏɪɴᴇᴅ ᴠɪᴀ ʏᴏᴜʀ ʟɪɴᴋ!\n⚠️: ɪɴᴠɪᴛᴇ 1 ᴍᴏʀᴇ ᴛᴏ ɢᴇᴛ ᴀ ғʀᴇᴇ ᴄᴏɪɴ.`), {parse_mode:'HTML'});
@@ -180,7 +168,6 @@ bot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
 
         const { allJoined } = await checkMembership(chatId);
         if (allJoined) {
-            // Handle Deep Link Commands
             if (match[1] && isNaN(match[1])) {
                 const cmd = match[1].toLowerCase();
                 if (cmd === 'help') return handleHelp(chatId);
@@ -274,13 +261,11 @@ async function showVerificationMenu(msg) {
     });
 }
 
-// ─── 📩 MESSAGES & STATES ─────────────────────────────────
 
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const text = msg.text;
 
-    // Group Security & Redirection logic
     const allUserCmds = ['/start', '/create', '/info', '/dev', '/referral', '/help', '/gift', '/buy'];
     if (msg.chat.type !== 'private') {
         if (text && text.startsWith('/')) {
@@ -296,16 +281,16 @@ bot.on('message', async (msg) => {
                 });
             }
         }
-        return; // Ignore all other messages in group
+        return; 
     }
 
-    if (text && (text.startsWith('/add') || text.startsWith('/rem') || text.startsWith('/rm') || text.startsWith('/reset') || text.startsWith('/ban') || text.startsWith('/unban') || text.startsWith('/users') || text.startsWith('/share') || text.startsWith('/sudo') || text.startsWith('/gift') || text.startsWith('/ref'))) return;
+    if (text && (text.startsWith('/add ') || text.startsWith('/rem ') || text.startsWith('/rm ') || text.startsWith('/reset ') || text.startsWith('/ban ') || text.startsWith('/unban ') || text.startsWith('/users') || text.startsWith('/share ') || text.startsWith('/sudo') || text.startsWith('/gift') || text.startsWith('/ref '))) return;
     if ((msg.caption && msg.caption.startsWith('/broadcast')) || (text && text.startsWith('/broadcast'))) return handleBroadcast(msg);
 
     if (!text) return;
 
     const user = await User.findOne({ chatId: msg.from.id });
-    if (user && user.isBanned) return;
+    if (!user || user.isBanned) return;
 
     if (text === "🔗 ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜʀʟ" || text === "/create") {
         handleCreateUrl(chatId, user);
@@ -326,7 +311,6 @@ bot.on('message', async (msg) => {
         handleBuyCoin(chatId);
     }
     
-    // Custom Link Steps
     else if (userState[chatId]) {
         if (userState[chatId].step === 'await_custom_name') {
             const cleanName = text.trim().replace(/[^a-zA-Z0-9-_]/g, '');
@@ -343,7 +327,6 @@ bot.on('message', async (msg) => {
     }
 });
 
-// HANDLERS
 async function handleCreateUrl(chatId, user) {
     const isSub = hasActiveSub(user);
     if (!isSub && user.freeUrlsLeft <= 0 && user.coins <= 0) {
@@ -358,9 +341,9 @@ async function handleCreateUrl(chatId, user) {
     const info = `<b>👤:</b> <code>${user.firstName}</code>
 ┃ ${balText}
 ┃ <b>┏─「 ɪɴsᴛʀᴜᴄᴛɪᴏɴs 」</b>
-┃ ┃ 3️⃣ <b>ʀᴀɴᴅᴏᴍ: sʏsᴛᴇᴍ ᴡɪʟʟ ᴍᴀᴋᴇ ᴀ ɴᴀᴍᴇ
-┃ ┃ 4️⃣ <b>ᴀғᴛᴇʀ ᴛʜᴀᴛ: ʏᴏᴜ ᴄᴀɴ sᴇᴛ ʀᴇᴅɪʀᴇᴄᴛ
-┃ ┗───────────╼</b>
+┃ ┃ 3️⃣ <b>ʀᴀɴᴅᴏᴍ: sʏsᴛᴇᴍ ᴡɪʟʟ ᴍᴀᴋᴇ ᴀ ɴᴀᴍᴇ</b>
+┃ ┃ 4️⃣ <b>ᴀғᴛᴇʀ ᴛʜᴀᴛ: ʏᴏᴜ ᴄᴀɴ sᴇᴛ ʀᴇᴅɪʀᴇᴄᴛ</b>
+┃ ┗───────────╼
 ┃ <b>ᴄᴜsᴛᴏᴍ ɴᴀᴍᴇ ᴍᴜsᴛ ʙᴇ 𝟹+ ʟᴇᴛᴛᴇʀs</b>`;
 
     bot.sendMessage(chatId, makeBorder("ᴄʀᴇᴀᴛᴇ ᴜʀʟ", info), {
@@ -440,7 +423,7 @@ function handleDev(chatId) {
     bot.sendMessage(chatId, makeBorder("ᴅᴇᴠᴇʟᴏᴘᴇʀ", "👨‍💻: ᴄᴏᴅᴇᴅ ʙʏ ᴅx-ᴄᴏᴅᴇx\n🛡: ᴘᴏᴡᴇʀᴇᴅ ʙʏ ᴄᴏᴅᴇx—ᴛᴇᴀᴍ"), { 
         parse_mode: 'HTML',
         reply_markup: {
-            inline_keyboard: [[{ text: "🛠 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ", url: `https://t.me/${GROUP_ID.replace('@', '')}` }]]
+            inline_keyboard: [[{ text: "🛠 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜপদে", url: `https://t.me/${GROUP_ID.replace('@', '')}` }]]
         }
     });
 }
@@ -480,7 +463,7 @@ function handleHelp(chatId) {
     bot.sendMessage(chatId, helpText, { parse_mode: 'HTML' });
 }
 
-// Callbacks 
+
 bot.on('callback_query', async (query) => {
     const chatId = query.message.chat.id;
     const data = query.data;
@@ -551,7 +534,7 @@ bot.on('callback_query', async (query) => {
     }
     else if (data === 'create_custom') {
         userState[chatId] = { step: 'await_custom_name' };
-        bot.sendMessage(chatId, makeBorder("ᴄᴜsᴛᴏᴍ", "<b>✏️: sᴇɴᴅ ʏᴏᴜʀ ᴄᴜsᴛᴏᴍ ʟɪɴᴋ ɴᴀᴍᴇ</b>"), { parse_mode: 'HTML' });
+        bot.sendMessage(chatId, makeBorder("ᴄᴜsᴛᴏᴍ", "<b>✏️: sᴇɴᴅ ʏᴏᴜʀ ᴄᴜspportune ʟɪɴᴋ ɴᴀᴍᴇ</b>"), { parse_mode: 'HTML' });
     } 
     else if (data === 'create_random') {
         askRedirect(query, Math.random().toString(36).substring(7));
@@ -599,7 +582,6 @@ async function createFinalLink(msg, name, redirectUrl) {
     bot.sendMessage(chatId, `<b>┏━━「 ✅ ${_fnt("SUCCESS")} 」━━┓</b>\n┃ 🔗: ${url}\n┃ \n┃ 🔄: ${redirectUrl || 'N/A'}\n┃ 💰: ${bal}\n<b>┗━━━━━━━━━━┛</b>`, { parse_mode: 'HTML' });
 }
 
-// ─── 🎁 USER GIFT SYSTEM ───────────
 
 bot.onText(/\/gift\s+(\d+)\s+(.+)/, async (msg, match) => {
     if (msg.chat.type !== 'private') return;
@@ -630,12 +612,10 @@ bot.onText(/\/gift$/, (msg) => {
     bot.sendMessage(msg.chat.id, makeBorder("💡 ʜᴏᴡ ᴛᴏ ᴜsᴇ", "✍️ <b>Usage:</b>\n<code>/gift [amount] [userID/Username]</code>\n\nExample: <code>/gift 10 123456789</code>"), {parse_mode:'HTML'});
 });
 
-// ─── 👑 ADMIN/SUDO COMMANDS ───────────
 
 bot.onText(/\/sudo(?:\s+(.+))?/, async (msg, match) => {
     if (!OWNER_IDS.includes(msg.from.id)) return;
     
-    // Show Sudo List
     if (!match[1] && !msg.reply_to_message) {
         const sudos = await User.find({ isSudo: true });
         let txt = `<b>┏━「 ꜱᴜᴅᴏ ʟɪꜱᴛ 」</b>\n`;
@@ -658,7 +638,6 @@ bot.onText(/\/sudo(?:\s+(.+))?/, async (msg, match) => {
     let targetId;
     let targetName = "User";
 
-    // Handle Reply or Manual ID
     if (msg.reply_to_message) {
         targetId = msg.reply_to_message.from.id;
         targetName = msg.reply_to_message.from.first_name || "User";
@@ -707,7 +686,6 @@ async function modifyOrAddSub(msg, match, type) {
 
     if (!targetUser) return bot.sendMessage(msg.chat.id, makeBorder("⚠️ ᴇʀʀᴏʀ", "❌: ᴜsᴇʀ ɴᴏᴛ ғᴏᴜɴᴅ"), {parse_mode:'HTML'});
 
-    // SUBSCRIPTION LOGIC
     if (amtStr.match(/[dmy]$/)) {
         const val = parseInt(amtStr);
         let multiplier = 0;
@@ -723,7 +701,6 @@ async function modifyOrAddSub(msg, match, type) {
         return;
     }
 
-    // COIN LOGIC
     const amount = parseInt(amtStr);
     if (isNaN(amount)) return bot.sendMessage(msg.chat.id, "❌ Invalid format");
 
@@ -1006,7 +983,6 @@ bot.onText(/\/users/, async (msg) => {
     } catch (e) { bot.sendMessage(msg.chat.id, "❌ Error generating user report."); }
 });
 
-// ─── 📢 ADVANCED BROADCAST ───────────────
 
 async function handleBroadcast(msg) {
     if (!(await checkAdmin(msg.from.id))) return;
@@ -1058,7 +1034,7 @@ async function handleBroadcast(msg) {
             if (e.response && e.response.body && e.response.body.error_code === 403) blocked++;
             else failed++;
         }
-        await new Promise(resolve => setTimeout(resolve, 50)); // Anti Rate-Limit Delay
+        await new Promise(resolve => setTimeout(resolve, 50)); 
     }
     
     const reportMsg = `✅ <b>ʙʀᴏᴀᴅᴄᴀsᴛ ᴄᴏᴍᴘʟᴇᴛᴇᴅ</b>
@@ -1072,7 +1048,6 @@ async function handleBroadcast(msg) {
     bot.sendMessage(msg.chat.id, reportMsg, {parse_mode:'HTML'});
 }
 
-// ─── 🎁 REFERRAL BROADCAST ───────────────
 
 bot.onText(/\/ref\s+(.+)/s, async (msg, match) => {
     if (!(await checkAdmin(msg.from.id))) return;
@@ -1094,14 +1069,13 @@ bot.onText(/\/ref\s+(.+)/s, async (msg, match) => {
             if (e.response && e.response.body && e.response.body.error_code === 403) blocked++;
             else failed++;
         }
-        await new Promise(resolve => setTimeout(resolve, 50)); // Anti Rate-Limit Delay
+        await new Promise(resolve => setTimeout(resolve, 50)); 
     }
     
     bot.sendMessage(msg.chat.id, `✅ <b>ʀᴇғᴇʀʀᴀʟ ʙʀᴏᴀᴅᴄᴀsᴛ ᴄᴏᴍᴘʟᴇᴛᴇᴅ!</b>\nsᴜᴄᴄᴇss: <code>${success}</code> | ʙʟᴏᴄᴋᴇᴅ: <code>${blocked}</code> | ғᴀɪʟᴇᴅ: <code>${failed}</code>`, {parse_mode:'HTML'});
 });
 
 
-// ─── 🌐 WEB ENGINE ────────
 
 app.get('/w/:id', async (req, res) => {
     const link = await Link.findOne({ shortId: req.params.id });
@@ -1297,7 +1271,7 @@ window.onload = start;
 </html>`;
 }
 
-// 🌐 RENDER URL KEEP-ALIVE PING (JS Version)
+
 const PING_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`; 
 setInterval(async () => {
     try {
@@ -1306,7 +1280,7 @@ setInterval(async () => {
     } catch (error) {
         console.error(`[BOT] Ping failed: ${error.message}`);
     }
-}, 300000); // 300,000ms = 5 Minutes
+}, 300000); 
 
 process.on('uncaughtException', (err) => console.log('Caught exception: ' + err));
 process.on('unhandledRejection', (reason, p) => console.log('Unhandled Rejection:', reason));
