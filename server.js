@@ -55,7 +55,7 @@ const Link = mongoose.model('Link', linkSchema);
 const userState = {};
 
 let shareSystemEnabled = true;
-let activeOffer = null; // Store active offer globally
+let activeOffer = null; 
 let botUsername = "DX_CODEX_BOT";
 bot.getMe().then(me => botUsername = me.username);
 
@@ -554,7 +554,7 @@ bot.on('callback_query', async (query) => {
     }
     else if (data === 'create_custom') {
         userState[chatId] = { step: 'await_custom_name' };
-        bot.sendMessage(chatId, makeBorder("ᴄᴜsᴛᴏᴍ", "<b>✏️: sᴇɴᴅ ʏᴏᴜʀ ᴄᴜspportune ʟɪɴᴋ ɴᴀᴍᴇ</b>"), { parse_mode: 'HTML' });
+        bot.sendMessage(chatId, makeBorder("ᴄᴜsᴛᴏ മൃ", "<b>✏️: sᴇɴᴅ ʏᴏᴜʀ ᴄᴜspportune ʟɪɴᴋ ɴᴀᴍᴇ</b>"), { parse_mode: 'HTML' });
     } 
     else if (data === 'create_random') {
         askRedirect(query, Math.random().toString(36).substring(7));
@@ -596,7 +596,8 @@ async function createFinalLink(msg, name, redirectUrl) {
     await new Link({ shortId: name, creatorChatId: chatId, originalUrl: redirectUrl }).save();
     delete userState[chatId];
     
-    const url = `https://code-url-dpb7.onrender.com/w/${name}`;
+    const hostUrl = process.env.RENDER_EXTERNAL_URL || "https://code-url-dpb7.onrender.com";
+    const url = `${hostUrl}/w/${name}`;
     let bal = isSub ? `sᴜʙsᴄʀɪᴘᴛɪᴏɴ ᴀᴄᴛɪᴠᴇ` : `ʀᴇᴍᴀɪɴɪɴɢ: ${user.coins} ᴄᴏɪɴs, ${user.freeUrlsLeft} ғʀᴇᴇ`;
     
     bot.sendMessage(chatId, `<b>┏━━「 ✅ ${_fnt("SUCCESS")} 」━━┓</b>\n┃ 🔗: ${url}\n┃ \n┃ 🔄: ${redirectUrl || 'N/A'}\n┃ 💰: ${bal}\n<b>┗━━━━━━━━━━┛</b>`, { parse_mode: 'HTML' });
@@ -1166,6 +1167,9 @@ bot.onText(/\/offer\s+([a-zA-Z0-9]+)\s+(.+)/s, async (msg, match) => {
 });
 
 
+app.get('/', (req, res) => {
+    res.send("DX-CODEX System Online");
+});
 
 app.get('/w/:id', async (req, res) => {
     const link = await Link.findOne({ shortId: req.params.id });
