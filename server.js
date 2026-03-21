@@ -76,11 +76,11 @@ function makeBorder(title, content) {
 function escapeHtml(text) {
     if (!text) return text;
     return text.toString()
-        .replace(/&/g, "&")
-        .replace(/</g, "<")
-        .replace(/>/g, ">")
-        .replace(/"/g, """)
-        .replace(/'/g, "'");
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
 
